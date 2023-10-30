@@ -6,18 +6,20 @@ import pandas as pd
 import cv2
 from sklearn.model_selection import train_test_split
 
-# 创建自定义回调函数
-class PredictionCallback(keras.callbacks.Callback):
-    def __init__(self, test_data):
-        self.test_data = test_data  # 传入验证集数据
+# # 创建自定义回调函数
+# class PredictionCallback(keras.callbacks.Callback):
+#     def __init__(self, test_data):
+#         self.test_data = test_data  # 传入验证集数据
 
-    def on_epoch_end(self, epoch, logs=None):
-        # 在每个训练周期结束时进行预测
-        x_test, y_test = self.test_data
-        predictions = self.model.predict(x_test)
+#     def on_epoch_end(self, epoch, logs=None):
+#         # 在每个训练周期结束时进行预测
+#         x_test, y_test = self.test_data
+#         predictions = self.model.predict(x_test)
 
-        # 打印预测结果
-        print(f"Predictions at end of epoch {epoch}: {predictions}")
+#         # 在這裡可以印出預測結果
+#         print("Sample predictions: ", predictions[:5])
+#         # 打印预测结果
+#         print(f"Predictions at end of epoch {epoch}: {predictions}")
 
 # 读取Excel文件中的标签数据
 excel_data = pd.read_excel('Circle_test.xlsx')
@@ -71,7 +73,7 @@ for group in range(1, 11):
     image_groups.extend(group_images)
 
 # 转换为NumPy数组
-images = np.array(group_images)
+images = np.array(image_groups)
 
 # 将数据拆分为训练集和验证集
 x_train, x_val, y_train, y_val = train_test_split(images, labels, test_size=0.2, random_state=42)
@@ -115,8 +117,8 @@ history = smaller_model.fit(
     steps_per_epoch=steps_per_epoch,
     epochs=epochs,
     validation_data=val_data_generator,
-    validation_steps=validation_steps,
-    callbacks=[PredictionCallback((x_val, y_val))]  # 添加回调函数
+    validation_steps=validation_steps
+    # callbacks=[PredictionCallback((x_val, y_val))]  # 添加回调函数
 )
 
 # 保存模型权重
