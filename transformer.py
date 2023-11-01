@@ -26,10 +26,12 @@ excel_data = pd.read_excel('Circle_test.xlsx')
 
 # 提取物理量标签数据并转换为NumPy数组，存储为列表
 label_groups = []
+count = 0
 for i in range(1, 11):  # 10大组
     for j in range(1, 6):  # 每大组包含5小组
-        labels = excel_data.loc[0, '50HZ']  # 只使用50HZ的标签
+        labels = excel_data.loc[count, '50HZ']  # 只使用50HZ的标签
         label_groups.extend([labels] * 200)  # 将一组标签重复200次
+        count+=1
 
 # 转换为NumPy数组
 labels = np.array(label_groups)
