@@ -35,7 +35,7 @@ for i in range(1, 11):  # 10大組
         
 # 轉換為NumPy數組
 labels = np.array(label_groups)
-
+print(labels)
 # 定義圖像的高度、寬度和通道數
 image_height = 64  # 減小圖像高度
 image_width = 64  # 減小圖像寬度
@@ -107,6 +107,15 @@ def smaller_transformer_model(image_height, image_width, num_channels):
 smaller_model = smaller_transformer_model(image_height, image_width, num_channels)
 
 # 編譯模型
+# 定義一個指數衰減學習率
+initial_learning_rate = 0.001
+lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate, decay_steps=100, decay_rate=0.9, staircase=True)
+
+# 使用帶有衰減學習率的Adam優化器
+optimizer = keras.optimizers.Adam(learning_rate=lr_schedule)
+
+
 smaller_model.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae'])
 
 # 訓練模型
