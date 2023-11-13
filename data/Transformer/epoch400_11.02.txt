@@ -1,0 +1,823 @@
+2023-11-01 16:25:47.787895: I tensorflow/core/util/port.cc:111] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2023-11-01 16:25:47.809236: E tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:9342] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered
+2023-11-01 16:25:47.809262: E tensorflow/compiler/xla/stream_executor/cuda/cuda_fft.cc:609] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered
+2023-11-01 16:25:47.809277: E tensorflow/compiler/xla/stream_executor/cuda/cuda_blas.cc:1518] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered
+2023-11-01 16:25:47.813182: I tensorflow/core/platform/cpu_feature_guard.cc:182] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2023-11-01 16:25:48.320784: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+2023-11-01 16:25:55.060766: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:894] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+2023-11-01 16:25:55.099964: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:894] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+2023-11-01 16:25:55.100077: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:894] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+2023-11-01 16:25:55.101018: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:894] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+2023-11-01 16:25:55.101233: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:894] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+2023-11-01 16:25:55.101305: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:894] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+2023-11-01 16:25:55.422117: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:894] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+2023-11-01 16:25:55.422253: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:894] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+2023-11-01 16:25:55.422327: I tensorflow/compiler/xla/stream_executor/cuda/cuda_gpu_executor.cc:894] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero. See more at https://github.com/torvalds/linux/blob/v6.0/Documentation/ABI/testing/sysfs-bus-pci#L344-L355
+2023-11-01 16:25:55.422378: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1886] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 21815 MB memory:  -> device: 0, name: NVIDIA GeForce RTX 3090, pci bus id: 0000:01:00.0, compute capability: 8.6
+Epoch 1/400
+2023-11-01 16:25:58.306267: I tensorflow/compiler/xla/stream_executor/cuda/cuda_dnn.cc:442] Loaded cuDNN version 8905
+2023-11-01 16:25:58.863101: I tensorflow/compiler/xla/service/service.cc:168] XLA service 0x562d1a507eb0 initialized for platform CUDA (this does not guarantee that XLA will be used). Devices:
+2023-11-01 16:25:58.863121: I tensorflow/compiler/xla/service/service.cc:176]   StreamExecutor device (0): NVIDIA GeForce RTX 3090, Compute Capability 8.6
+2023-11-01 16:25:58.866289: I tensorflow/compiler/mlir/tensorflow/utils/dump_mlir_util.cc:269] disabling MLIR crash reproducer, set env var `MLIR_CRASH_REPRODUCER_DIRECTORY` to enable.
+2023-11-01 16:25:58.918614: I ./tensorflow/compiler/jit/device_compiler.h:186] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
+1000/1000 [==============================] - 149s 145ms/step - loss: 102555.0547 - mae: 320.0181 - val_loss: 102461.4844 - val_mae: 319.8742
+Epoch 2/400
+1000/1000 [==============================] - 146s 146ms/step - loss: 101916.8828 - mae: 319.0189 - val_loss: 101828.9141 - val_mae: 318.8842
+Epoch 3/400
+1000/1000 [==============================] - 146s 146ms/step - loss: 101281.2812 - mae: 318.0211 - val_loss: 101149.9766 - val_mae: 317.8193
+Epoch 4/400
+1000/1000 [==============================] - 147s 147ms/step - loss: 100647.9844 - mae: 317.0240 - val_loss: 100552.4453 - val_mae: 316.8762
+Epoch 5/400
+1000/1000 [==============================] - 148s 148ms/step - loss: 100016.7500 - mae: 316.0271 - val_loss: 99941.6484 - val_mae: 315.9100
+Epoch 6/400
+1000/1000 [==============================] - 146s 146ms/step - loss: 99387.6875 - mae: 315.0301 - val_loss: 99315.3594 - val_mae: 314.9183
+Epoch 7/400
+1000/1000 [==============================] - 146s 146ms/step - loss: 98760.6016 - mae: 314.0331 - val_loss: 98719.1484 - val_mae: 313.9701
+Epoch 8/400
+1000/1000 [==============================] - 146s 146ms/step - loss: 98135.4609 - mae: 313.0366 - val_loss: 98025.1172 - val_mae: 312.8625
+Epoch 9/400
+1000/1000 [==============================] - 144s 144ms/step - loss: 97512.4453 - mae: 312.0392 - val_loss: 97366.2969 - val_mae: 311.8058
+Epoch 10/400
+1000/1000 [==============================] - 142s 142ms/step - loss: 96891.3750 - mae: 311.0432 - val_loss: 96909.2734 - val_mae: 311.0754
+Epoch 11/400
+1000/1000 [==============================] - 151s 151ms/step - loss: 96272.2188 - mae: 310.0466 - val_loss: 96203.7500 - val_mae: 309.9378
+Epoch 12/400
+1000/1000 [==============================] - 146s 146ms/step - loss: 95655.2500 - mae: 309.0493 - val_loss: 95419.2109 - val_mae: 308.6729
+Epoch 13/400
+1000/1000 [==============================] - 146s 146ms/step - loss: 95040.2109 - mae: 308.0529 - val_loss: 95037.8906 - val_mae: 308.0489
+Epoch 14/400
+1000/1000 [==============================] - 148s 148ms/step - loss: 94427.1406 - mae: 307.0561 - val_loss: 94306.2500 - val_mae: 306.8629
+Epoch 15/400
+1000/1000 [==============================] - 146s 146ms/step - loss: 93816.0234 - mae: 306.0596 - val_loss: 93726.1094 - val_mae: 305.9151
+Epoch 16/400
+1000/1000 [==============================] - 145s 145ms/step - loss: 93206.9375 - mae: 305.0628 - val_loss: 93226.5859 - val_mae: 305.0944
+Epoch 17/400
+1000/1000 [==============================] - 144s 144ms/step - loss: 92599.8750 - mae: 304.0662 - val_loss: 92417.1484 - val_mae: 303.7747
+Epoch 18/400
+1000/1000 [==============================] - 146s 146ms/step - loss: 91994.8125 - mae: 303.0693 - val_loss: 91887.2891 - val_mae: 302.8928
+Epoch 19/400
+1000/1000 [==============================] - 142s 142ms/step - loss: 91391.7109 - mae: 302.0728 - val_loss: 91265.4766 - val_mae: 301.8672
+Epoch 20/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 90790.6172 - mae: 301.0758 - val_loss: 90760.8438 - val_mae: 301.0330
+Epoch 21/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 90191.4141 - mae: 300.0795 - val_loss: 90117.7344 - val_mae: 299.9555
+Epoch 22/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 89594.3281 - mae: 299.0829 - val_loss: 89467.4844 - val_mae: 298.8758
+Epoch 23/400
+1000/1000 [==============================] - 144s 144ms/step - loss: 88999.0625 - mae: 298.0863 - val_loss: 89004.6484 - val_mae: 298.0948
+Epoch 24/400
+1000/1000 [==============================] - 144s 144ms/step - loss: 88406.0000 - mae: 297.0896 - val_loss: 88350.1875 - val_mae: 296.9991
+Epoch 25/400
+1000/1000 [==============================] - 145s 145ms/step - loss: 87814.7344 - mae: 296.0930 - val_loss: 87732.4531 - val_mae: 295.9561
+Epoch 26/400
+1000/1000 [==============================] - 144s 144ms/step - loss: 87225.6875 - mae: 295.0966 - val_loss: 87059.6562 - val_mae: 294.8193
+Epoch 27/400
+1000/1000 [==============================] - 143s 143ms/step - loss: 86638.4062 - mae: 294.1001 - val_loss: 86664.6641 - val_mae: 294.1511
+Epoch 28/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 86053.3203 - mae: 293.1032 - val_loss: 86003.5781 - val_mae: 293.0199
+Epoch 29/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 85470.1562 - mae: 292.1072 - val_loss: 85352.6250 - val_mae: 291.9106
+Epoch 30/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 84889.0000 - mae: 291.1101 - val_loss: 84658.8672 - val_mae: 290.7185
+Epoch 31/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 84309.8594 - mae: 290.1138 - val_loss: 84363.1875 - val_mae: 290.2096
+Epoch 32/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 83732.6797 - mae: 289.1177 - val_loss: 83562.5078 - val_mae: 288.8290
+Epoch 33/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 83157.3750 - mae: 288.1208 - val_loss: 83034.9766 - val_mae: 287.9054
+Epoch 34/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 82584.0312 - mae: 287.1246 - val_loss: 82626.3047 - val_mae: 287.2005
+Epoch 35/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 82012.8984 - mae: 286.1281 - val_loss: 81898.2344 - val_mae: 285.9323
+Epoch 36/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 81443.7734 - mae: 285.1315 - val_loss: 81465.1875 - val_mae: 285.1693
+Epoch 37/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 80876.4531 - mae: 284.1352 - val_loss: 80842.6562 - val_mae: 284.0777
+Epoch 38/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 80311.1797 - mae: 283.1388 - val_loss: 80230.6094 - val_mae: 283.0027
+Epoch 39/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 79747.9531 - mae: 282.1424 - val_loss: 79714.2891 - val_mae: 282.0852
+Epoch 40/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 79186.6484 - mae: 281.1457 - val_loss: 78910.5469 - val_mae: 280.6602
+Epoch 41/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 78627.4141 - mae: 280.1496 - val_loss: 78643.4688 - val_mae: 280.1761
+Epoch 42/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 78070.1953 - mae: 279.1531 - val_loss: 77950.3750 - val_mae: 278.9474
+Epoch 43/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 77514.8984 - mae: 278.1568 - val_loss: 77409.2266 - val_mae: 277.9680
+Epoch 44/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 76961.7266 - mae: 277.1603 - val_loss: 76954.6172 - val_mae: 277.1490
+Epoch 45/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 76410.3281 - mae: 276.1642 - val_loss: 76351.2812 - val_mae: 276.0609
+Epoch 46/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 75861.1094 - mae: 275.1677 - val_loss: 75681.4141 - val_mae: 274.8403
+Epoch 47/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 75313.7500 - mae: 274.1717 - val_loss: 75370.0938 - val_mae: 274.2812
+Epoch 48/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 74768.3594 - mae: 273.1751 - val_loss: 74656.3281 - val_mae: 272.9743
+Epoch 49/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 74225.0859 - mae: 272.1790 - val_loss: 74140.4062 - val_mae: 272.0311
+Epoch 50/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 73683.7266 - mae: 271.1826 - val_loss: 73594.8594 - val_mae: 271.0154
+Epoch 51/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 73144.4062 - mae: 270.1864 - val_loss: 73028.5703 - val_mae: 269.9805
+Epoch 52/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 72607.0938 - mae: 269.1903 - val_loss: 72655.3594 - val_mae: 269.2771
+Epoch 53/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 72071.6016 - mae: 268.1942 - val_loss: 71965.0078 - val_mae: 267.9986
+Epoch 54/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 71538.2969 - mae: 267.1976 - val_loss: 71256.2578 - val_mae: 266.6792
+Epoch 55/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 71006.9766 - mae: 266.2018 - val_loss: 71269.3281 - val_mae: 266.6901
+Epoch 56/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 70477.7031 - mae: 265.2053 - val_loss: 70086.1875 - val_mae: 264.4755
+Epoch 57/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 69950.1875 - mae: 264.2094 - val_loss: 69955.8281 - val_mae: 264.2202
+Epoch 58/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 69424.7344 - mae: 263.2132 - val_loss: 69475.6719 - val_mae: 263.3143
+Epoch 59/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 68901.4141 - mae: 262.2170 - val_loss: 68697.6484 - val_mae: 261.8354
+Epoch 60/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 68380.0234 - mae: 261.2209 - val_loss: 68404.5547 - val_mae: 261.2697
+Epoch 61/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 67860.5312 - mae: 260.2248 - val_loss: 67744.9062 - val_mae: 260.0074
+Epoch 62/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 67343.2031 - mae: 259.2289 - val_loss: 67230.8828 - val_mae: 259.0197
+Epoch 63/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 66827.8125 - mae: 258.2326 - val_loss: 66814.7578 - val_mae: 258.2032
+Epoch 64/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 66314.3125 - mae: 257.2366 - val_loss: 66292.4844 - val_mae: 257.1966
+Epoch 65/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 65802.8984 - mae: 256.2404 - val_loss: 65632.9219 - val_mae: 255.9180
+Epoch 66/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 65293.5195 - mae: 255.2448 - val_loss: 65159.4219 - val_mae: 254.9862
+Epoch 67/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 64786.0156 - mae: 254.2486 - val_loss: 64730.6367 - val_mae: 254.1379
+Epoch 68/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 64280.5547 - mae: 253.2527 - val_loss: 64223.8438 - val_mae: 253.1516
+Epoch 69/400
+1000/1000 [==============================] - 138s 139ms/step - loss: 63777.1953 - mae: 252.2568 - val_loss: 63743.0352 - val_mae: 252.1891
+Epoch 70/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 63275.6680 - mae: 251.2607 - val_loss: 63145.8164 - val_mae: 251.0034
+Epoch 71/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 62776.0859 - mae: 250.2648 - val_loss: 62693.8750 - val_mae: 250.1062
+Epoch 72/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 62278.6016 - mae: 249.2688 - val_loss: 62248.4102 - val_mae: 249.2137
+Epoch 73/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 61783.0625 - mae: 248.2730 - val_loss: 61666.8516 - val_mae: 248.0416
+Epoch 74/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 61289.5195 - mae: 247.2769 - val_loss: 61236.2734 - val_mae: 247.1776
+Epoch 75/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 60797.9961 - mae: 246.2814 - val_loss: 60749.9766 - val_mae: 246.1804
+Epoch 76/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 60308.4844 - mae: 245.2849 - val_loss: 60201.7969 - val_mae: 245.0748
+Epoch 77/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 59820.9023 - mae: 244.2895 - val_loss: 59764.4258 - val_mae: 244.1771
+Epoch 78/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 59335.2969 - mae: 243.2932 - val_loss: 59353.9336 - val_mae: 243.3349
+Epoch 79/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 58851.7305 - mae: 242.2975 - val_loss: 58683.5312 - val_mae: 241.9533
+Epoch 80/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 58370.1992 - mae: 241.3016 - val_loss: 58257.6992 - val_mae: 241.0763
+Epoch 81/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 57890.6914 - mae: 240.3060 - val_loss: 57837.8125 - val_mae: 240.1977
+Epoch 82/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 57413.0312 - mae: 239.3103 - val_loss: 57353.7109 - val_mae: 239.1916
+Epoch 83/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 56937.5039 - mae: 238.3146 - val_loss: 56967.6523 - val_mae: 238.3782
+Epoch 84/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 56463.8398 - mae: 237.3190 - val_loss: 56472.2578 - val_mae: 237.3380
+Epoch 85/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 55992.2227 - mae: 236.3231 - val_loss: 55943.1172 - val_mae: 236.2187
+Epoch 86/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 55522.6094 - mae: 235.3274 - val_loss: 55355.5039 - val_mae: 234.9788
+Epoch 87/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 55055.0664 - mae: 234.3318 - val_loss: 55016.3398 - val_mae: 234.2503
+Epoch 88/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 54589.5898 - mae: 233.3361 - val_loss: 54399.1953 - val_mae: 232.9338
+Epoch 89/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 54125.8594 - mae: 232.3409 - val_loss: 54132.1562 - val_mae: 232.3620
+Epoch 90/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 53664.2031 - mae: 231.3448 - val_loss: 53555.9805 - val_mae: 231.1160
+Epoch 91/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 53204.4414 - mae: 230.3494 - val_loss: 53061.0039 - val_mae: 230.0381
+Epoch 92/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 52746.8828 - mae: 229.3534 - val_loss: 52781.2617 - val_mae: 229.4382
+Epoch 93/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 52291.2422 - mae: 228.3586 - val_loss: 52252.3047 - val_mae: 228.2763
+Epoch 94/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 51837.4570 - mae: 227.3632 - val_loss: 51717.0508 - val_mae: 227.0983
+Epoch 95/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 51385.7812 - mae: 226.3672 - val_loss: 51370.7070 - val_mae: 226.3382
+Epoch 96/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 50936.0000 - mae: 225.3718 - val_loss: 50869.1211 - val_mae: 225.2274
+Epoch 97/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 50488.2227 - mae: 224.3762 - val_loss: 50421.5156 - val_mae: 224.2278
+Epoch 98/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 50042.5859 - mae: 223.3805 - val_loss: 49970.9727 - val_mae: 223.2236
+Epoch 99/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 49598.9492 - mae: 222.3853 - val_loss: 49573.4609 - val_mae: 222.3323
+Epoch 100/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 49157.2070 - mae: 221.3897 - val_loss: 49039.9766 - val_mae: 221.1306
+Epoch 101/400
+1000/1000 [==============================] - 138s 138ms/step - loss: 48717.3945 - mae: 220.3946 - val_loss: 48649.8789 - val_mae: 220.2483
+Epoch 102/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 48279.6172 - mae: 219.3991 - val_loss: 48164.4531 - val_mae: 219.1415
+Epoch 103/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 47843.8242 - mae: 218.4036 - val_loss: 47850.4375 - val_mae: 218.4203
+Epoch 104/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 47410.0391 - mae: 217.4083 - val_loss: 47273.3359 - val_mae: 217.1002
+Epoch 105/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 46978.3125 - mae: 216.4129 - val_loss: 46952.8984 - val_mae: 216.3586
+Epoch 106/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 46548.5469 - mae: 215.4179 - val_loss: 46427.5625 - val_mae: 215.1428
+Epoch 107/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 46120.6758 - mae: 214.4227 - val_loss: 46110.5430 - val_mae: 214.4045
+Epoch 108/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 45694.9570 - mae: 213.4272 - val_loss: 45585.3867 - val_mae: 213.1699
+Epoch 109/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 45271.1133 - mae: 212.4322 - val_loss: 45220.8359 - val_mae: 212.3198
+Epoch 110/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 44849.2617 - mae: 211.4369 - val_loss: 44731.8125 - val_mae: 211.1665
+Epoch 111/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 44429.4531 - mae: 210.4419 - val_loss: 44428.1406 - val_mae: 210.4410
+Epoch 112/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 44011.5039 - mae: 209.4467 - val_loss: 43904.4922 - val_mae: 209.1967
+Epoch 113/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 43595.6289 - mae: 208.4514 - val_loss: 43548.5391 - val_mae: 208.3440
+Epoch 114/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 43181.6914 - mae: 207.4565 - val_loss: 43124.1016 - val_mae: 207.3196
+Epoch 115/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 42769.8750 - mae: 206.4612 - val_loss: 42743.6758 - val_mae: 206.4034
+Epoch 116/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 42360.0977 - mae: 205.4662 - val_loss: 42346.6914 - val_mae: 205.4346
+Epoch 117/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 41952.1914 - mae: 204.4715 - val_loss: 41844.5938 - val_mae: 204.2133
+Epoch 118/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 41546.2891 - mae: 203.4765 - val_loss: 41546.8750 - val_mae: 203.4795
+Epoch 119/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 41142.3516 - mae: 202.4812 - val_loss: 41048.3242 - val_mae: 202.2529
+Epoch 120/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 40740.4062 - mae: 201.4866 - val_loss: 40662.2266 - val_mae: 201.2989
+Epoch 121/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 40340.5469 - mae: 200.4913 - val_loss: 40262.3789 - val_mae: 200.3050
+Epoch 122/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 39942.6953 - mae: 199.4965 - val_loss: 39917.2266 - val_mae: 199.4339
+Epoch 123/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 39546.7773 - mae: 198.5019 - val_loss: 39495.6758 - val_mae: 198.3773
+Epoch 124/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 39152.7109 - mae: 197.5074 - val_loss: 39069.8828 - val_mae: 197.3030
+Epoch 125/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 38760.7617 - mae: 196.5121 - val_loss: 38712.2617 - val_mae: 196.3926
+Epoch 126/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 38370.8516 - mae: 195.5177 - val_loss: 38313.8828 - val_mae: 195.3766
+Epoch 127/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 37982.8320 - mae: 194.5229 - val_loss: 37905.5312 - val_mae: 194.3300
+Epoch 128/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 37596.6914 - mae: 193.5283 - val_loss: 37568.6016 - val_mae: 193.4569
+Epoch 129/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 37212.6719 - mae: 192.5333 - val_loss: 37155.7695 - val_mae: 192.3899
+Epoch 130/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 36830.8711 - mae: 191.5386 - val_loss: 36762.9375 - val_mae: 191.3674
+Epoch 131/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 36450.9609 - mae: 190.5446 - val_loss: 36378.8633 - val_mae: 190.3611
+Epoch 132/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 36073.1133 - mae: 189.5508 - val_loss: 36053.2734 - val_mae: 189.5044
+Epoch 133/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 35697.1914 - mae: 188.5561 - val_loss: 35534.5195 - val_mae: 188.1323
+Epoch 134/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 35323.3945 - mae: 187.5627 - val_loss: 35345.8906 - val_mae: 187.6225
+Epoch 135/400
+1000/1000 [==============================] - 139s 139ms/step - loss: 34951.5703 - mae: 186.5686 - val_loss: 34860.9453 - val_mae: 186.3350
+Epoch 136/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 34581.6797 - mae: 185.5750 - val_loss: 34585.1992 - val_mae: 185.5834
+Epoch 137/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 34213.6914 - mae: 184.5811 - val_loss: 34110.1758 - val_mae: 184.3126
+Epoch 138/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 33847.8672 - mae: 183.5868 - val_loss: 33840.8633 - val_mae: 183.5665
+Epoch 139/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 33483.8789 - mae: 182.5933 - val_loss: 33405.2969 - val_mae: 182.3874
+Epoch 140/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 33121.8789 - mae: 181.5995 - val_loss: 33070.7461 - val_mae: 181.4593
+Epoch 141/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 32761.9180 - mae: 180.6053 - val_loss: 32713.1504 - val_mae: 180.4738
+Epoch 142/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 32403.9844 - mae: 179.6114 - val_loss: 32335.8555 - val_mae: 179.4298
+Epoch 143/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 32048.0762 - mae: 178.6177 - val_loss: 31955.2051 - val_mae: 178.3633
+Epoch 144/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 31693.9688 - mae: 177.6242 - val_loss: 31713.0996 - val_mae: 177.6808
+Epoch 145/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 31341.8984 - mae: 176.6303 - val_loss: 31232.7227 - val_mae: 176.3283
+Epoch 146/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 30991.8066 - mae: 175.6362 - val_loss: 30992.6797 - val_mae: 175.6441
+Epoch 147/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 30643.7656 - mae: 174.6429 - val_loss: 30547.3691 - val_mae: 174.3651
+Epoch 148/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 30297.7012 - mae: 173.6490 - val_loss: 30264.6230 - val_mae: 173.5602
+Epoch 149/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 29953.5586 - mae: 172.6554 - val_loss: 29912.1719 - val_mae: 172.5434
+Epoch 150/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 29611.3555 - mae: 171.6614 - val_loss: 29543.0137 - val_mae: 171.4634
+Epoch 151/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 29271.2070 - mae: 170.6677 - val_loss: 29265.1035 - val_mae: 170.6502
+Epoch 152/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 28933.1113 - mae: 169.6743 - val_loss: 28868.6484 - val_mae: 169.4954
+Epoch 153/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 28596.9082 - mae: 168.6807 - val_loss: 28496.2949 - val_mae: 168.3933
+Epoch 154/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 28262.5391 - mae: 167.6872 - val_loss: 28283.1094 - val_mae: 167.7457
+Epoch 155/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 27930.3438 - mae: 166.6934 - val_loss: 27909.2969 - val_mae: 166.6378
+Epoch 156/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 27600.1074 - mae: 165.6998 - val_loss: 27537.2480 - val_mae: 165.5129
+Epoch 157/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 27271.8613 - mae: 164.7062 - val_loss: 27192.2734 - val_mae: 164.4684
+Epoch 158/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 26945.5762 - mae: 163.7131 - val_loss: 27000.9492 - val_mae: 163.8857
+Epoch 159/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 26621.1875 - mae: 162.7195 - val_loss: 26517.2617 - val_mae: 162.4077
+Epoch 160/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 26298.8340 - mae: 161.7256 - val_loss: 26265.9043 - val_mae: 161.6288
+Epoch 161/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 25978.4648 - mae: 160.7321 - val_loss: 25921.5449 - val_mae: 160.5581
+Epoch 162/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 25660.0723 - mae: 159.7387 - val_loss: 25564.3047 - val_mae: 159.4507
+Epoch 163/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 25343.6914 - mae: 158.7451 - val_loss: 25360.2988 - val_mae: 158.7922
+Epoch 164/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 25029.2930 - mae: 157.7518 - val_loss: 24952.8926 - val_mae: 157.5167
+Epoch 165/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 24716.9102 - mae: 156.7581 - val_loss: 24720.2969 - val_mae: 156.7729
+Epoch 166/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 24406.5703 - mae: 155.7655 - val_loss: 24353.2227 - val_mae: 155.6048
+Epoch 167/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 24098.0332 - mae: 154.7724 - val_loss: 24017.8809 - val_mae: 154.5131
+Epoch 168/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 23791.5723 - mae: 153.7787 - val_loss: 23794.5391 - val_mae: 153.7977
+Epoch 169/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 23487.0859 - mae: 152.7856 - val_loss: 23324.1582 - val_mae: 152.2661
+Epoch 170/400
+1000/1000 [==============================] - 142s 142ms/step - loss: 23184.6348 - mae: 151.7926 - val_loss: 23181.2363 - val_mae: 151.7867
+Epoch 171/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 22884.1445 - mae: 150.7996 - val_loss: 22870.5977 - val_mae: 150.7592
+Epoch 172/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 22585.6270 - mae: 149.8065 - val_loss: 22523.3828 - val_mae: 149.6053
+Epoch 173/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 22289.0234 - mae: 148.8130 - val_loss: 22267.1445 - val_mae: 148.7383
+Epoch 174/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 21994.4785 - mae: 147.8200 - val_loss: 21918.3867 - val_mae: 147.5638
+Epoch 175/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 21701.9355 - mae: 146.8273 - val_loss: 21738.8438 - val_mae: 146.9667
+Epoch 176/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 21411.3320 - mae: 145.8343 - val_loss: 21345.6895 - val_mae: 145.6131
+Epoch 177/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 21122.7578 - mae: 144.8413 - val_loss: 21113.1758 - val_mae: 144.8138
+Epoch 178/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 20836.1504 - mae: 143.8490 - val_loss: 20736.1309 - val_mae: 143.5072
+Epoch 179/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 20551.5215 - mae: 142.8556 - val_loss: 20517.0000 - val_mae: 142.7441
+Epoch 180/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 20268.9355 - mae: 141.8632 - val_loss: 20273.3828 - val_mae: 141.8789
+Epoch 181/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 19988.3027 - mae: 140.8710 - val_loss: 19861.4004 - val_mae: 140.4312
+Epoch 182/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 19709.6602 - mae: 139.8785 - val_loss: 19775.7578 - val_mae: 140.1173
+Epoch 183/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 19433.0684 - mae: 138.8863 - val_loss: 19310.8418 - val_mae: 138.4573
+Epoch 184/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 19158.3301 - mae: 137.8937 - val_loss: 19168.2109 - val_mae: 137.9368
+Epoch 185/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 18885.6816 - mae: 136.9017 - val_loss: 18843.7500 - val_mae: 136.7550
+Epoch 186/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 18614.9082 - mae: 135.9091 - val_loss: 18587.5898 - val_mae: 135.8143
+Epoch 187/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 18346.1699 - mae: 134.9169 - val_loss: 18285.9199 - val_mae: 134.6908
+Epoch 188/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 18079.3984 - mae: 133.9245 - val_loss: 18040.6465 - val_mae: 133.7958
+Epoch 189/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 17814.6660 - mae: 132.9326 - val_loss: 17729.1484 - val_mae: 132.6165
+Epoch 190/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 17551.9941 - mae: 131.9406 - val_loss: 17540.3379 - val_mae: 131.9100
+Epoch 191/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 17291.1836 - mae: 130.9487 - val_loss: 17255.2852 - val_mae: 130.8175
+Epoch 192/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 17032.3359 - mae: 129.9566 - val_loss: 17027.1953 - val_mae: 129.9377
+Epoch 193/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 16775.5371 - mae: 128.9645 - val_loss: 16712.0254 - val_mae: 128.7334
+Epoch 194/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 16520.6406 - mae: 127.9729 - val_loss: 16429.5195 - val_mae: 127.6320
+Epoch 195/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 16267.8291 - mae: 126.9807 - val_loss: 16308.2617 - val_mae: 127.1273
+Epoch 196/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 16016.9805 - mae: 125.9891 - val_loss: 15890.7666 - val_mae: 125.5023
+Epoch 197/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 15768.0439 - mae: 124.9980 - val_loss: 15737.0889 - val_mae: 124.8787
+Epoch 198/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 15521.1279 - mae: 124.0058 - val_loss: 15536.8330 - val_mae: 124.0781
+Epoch 199/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 15276.1816 - mae: 123.0143 - val_loss: 15221.6670 - val_mae: 122.7927
+Epoch 200/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 15033.1836 - mae: 122.0230 - val_loss: 15062.1406 - val_mae: 122.1503
+Epoch 201/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 14792.2080 - mae: 121.0309 - val_loss: 14653.5566 - val_mae: 120.4773
+Epoch 202/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 14553.2637 - mae: 120.0395 - val_loss: 14525.2949 - val_mae: 119.9253
+Epoch 203/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 14316.2891 - mae: 119.0485 - val_loss: 14339.6553 - val_mae: 119.1594
+Epoch 204/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 14081.2451 - mae: 118.0572 - val_loss: 14016.8145 - val_mae: 117.7952
+Epoch 205/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 13848.1064 - mae: 117.0662 - val_loss: 13777.6602 - val_mae: 116.7753
+Epoch 206/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 13617.0498 - mae: 116.0749 - val_loss: 13565.5664 - val_mae: 115.8590
+Epoch 207/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 13387.9424 - mae: 115.0839 - val_loss: 13390.6650 - val_mae: 115.1051
+Epoch 208/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 13160.9072 - mae: 114.0925 - val_loss: 13122.6143 - val_mae: 113.9264
+Epoch 209/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 12935.8262 - mae: 113.1020 - val_loss: 12894.6973 - val_mae: 112.9314
+Epoch 210/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 12712.6436 - mae: 112.1113 - val_loss: 12692.9062 - val_mae: 112.0516
+Epoch 211/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 12491.4189 - mae: 111.1207 - val_loss: 12461.4473 - val_mae: 110.9663
+Epoch 212/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 12272.2979 - mae: 110.1296 - val_loss: 12190.3916 - val_mae: 109.7640
+Epoch 213/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 12055.1221 - mae: 109.1398 - val_loss: 12088.2939 - val_mae: 109.3080
+Epoch 214/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 11839.9141 - mae: 108.1493 - val_loss: 11745.2871 - val_mae: 107.7249
+Epoch 215/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 11626.7402 - mae: 107.1587 - val_loss: 11633.9658 - val_mae: 107.1903
+Epoch 216/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 11415.5801 - mae: 106.1688 - val_loss: 11405.3564 - val_mae: 106.1290
+Epoch 217/400
+1000/1000 [==============================] - 143s 143ms/step - loss: 11206.3164 - mae: 105.1790 - val_loss: 11130.4893 - val_mae: 104.8429
+Epoch 218/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 10999.1025 - mae: 104.1889 - val_loss: 11016.3477 - val_mae: 104.2697
+Epoch 219/400
+1000/1000 [==============================] - 142s 142ms/step - loss: 10793.9082 - mae: 103.1999 - val_loss: 10727.5723 - val_mae: 102.8879
+Epoch 220/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 10590.5430 - mae: 102.2103 - val_loss: 10546.8818 - val_mae: 102.0119
+Epoch 221/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 10389.1982 - mae: 101.2202 - val_loss: 10362.5830 - val_mae: 101.1102
+Epoch 222/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 10189.8389 - mae: 100.2307 - val_loss: 10157.6152 - val_mae: 100.0782
+Epoch 223/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 9992.5068 - mae: 99.2409 - val_loss: 9920.4033 - val_mae: 98.8849
+Epoch 224/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 9797.0898 - mae: 98.2519 - val_loss: 9787.5615 - val_mae: 98.2099
+Epoch 225/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 9603.6758 - mae: 97.2626 - val_loss: 9615.7012 - val_mae: 97.3248
+Epoch 226/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 9412.2432 - mae: 96.2732 - val_loss: 9349.6055 - val_mae: 95.9621
+Epoch 227/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 9222.8848 - mae: 95.2841 - val_loss: 9228.2764 - val_mae: 95.3252
+Epoch 228/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 9035.5293 - mae: 94.2958 - val_loss: 8965.9736 - val_mae: 93.9227
+Epoch 229/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 8850.0186 - mae: 93.3078 - val_loss: 8797.1084 - val_mae: 93.0699
+Epoch 230/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 8666.4463 - mae: 92.3188 - val_loss: 8710.1504 - val_mae: 92.5360
+Epoch 231/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 8484.9404 - mae: 91.3306 - val_loss: 8424.7725 - val_mae: 91.0050
+Epoch 232/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 8305.4121 - mae: 90.3424 - val_loss: 8269.8701 - val_mae: 90.1634
+Epoch 233/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 8127.7998 - mae: 89.3540 - val_loss: 8106.3970 - val_mae: 89.2574
+Epoch 234/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 7952.1992 - mae: 88.3656 - val_loss: 7898.0737 - val_mae: 88.0578
+Epoch 235/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 7778.6152 - mae: 87.3777 - val_loss: 7784.8516 - val_mae: 87.4196
+Epoch 236/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 7606.9585 - mae: 86.3909 - val_loss: 7573.5122 - val_mae: 86.2099
+Epoch 237/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 7437.2593 - mae: 85.4027 - val_loss: 7399.2734 - val_mae: 85.1912
+Epoch 238/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 7269.5649 - mae: 84.4159 - val_loss: 7271.1890 - val_mae: 84.4394
+Epoch 239/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 7103.8960 - mae: 83.4280 - val_loss: 7060.4727 - val_mae: 83.1779
+Epoch 240/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 6940.2251 - mae: 82.4418 - val_loss: 6931.5674 - val_mae: 82.3974
+Epoch 241/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 6778.5259 - mae: 81.4544 - val_loss: 6760.4434 - val_mae: 81.3468
+Epoch 242/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 6618.7778 - mae: 80.4681 - val_loss: 6591.0537 - val_mae: 80.3192
+Epoch 243/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 6461.0176 - mae: 79.4812 - val_loss: 6454.5420 - val_mae: 79.4448
+Epoch 244/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 6305.2476 - mae: 78.4952 - val_loss: 6270.7715 - val_mae: 78.2876
+Epoch 245/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 6151.3774 - mae: 77.5094 - val_loss: 6125.4814 - val_mae: 77.3642
+Epoch 246/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 5999.4653 - mae: 76.5235 - val_loss: 5976.6890 - val_mae: 76.3749
+Epoch 247/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 5849.5454 - mae: 75.5372 - val_loss: 5827.0005 - val_mae: 75.4008
+Epoch 248/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 5701.6523 - mae: 74.5516 - val_loss: 5679.9521 - val_mae: 74.4204
+Epoch 249/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 5555.7178 - mae: 73.5670 - val_loss: 5523.8857 - val_mae: 73.3610
+Epoch 250/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 5411.7847 - mae: 72.5814 - val_loss: 5381.5542 - val_mae: 72.3905
+Epoch 251/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 5269.8008 - mae: 71.5969 - val_loss: 5248.5542 - val_mae: 71.4609
+Epoch 252/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 5129.7446 - mae: 70.6119 - val_loss: 5105.2832 - val_mae: 70.4535
+Epoch 253/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 4991.6719 - mae: 69.6273 - val_loss: 4973.3667 - val_mae: 69.5087
+Epoch 254/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 4855.6030 - mae: 68.6431 - val_loss: 4827.8032 - val_mae: 68.4563
+Epoch 255/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 4721.4570 - mae: 67.6598 - val_loss: 4702.6621 - val_mae: 67.5279
+Epoch 256/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 4589.3335 - mae: 66.6750 - val_loss: 4566.5791 - val_mae: 66.5328
+Epoch 257/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 4459.1963 - mae: 65.6927 - val_loss: 4428.8589 - val_mae: 65.4702
+Epoch 258/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 4330.9434 - mae: 64.7092 - val_loss: 4325.8911 - val_mae: 64.6876
+Epoch 259/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 4204.6362 - mae: 63.7257 - val_loss: 4191.9663 - val_mae: 63.6315
+Epoch 260/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 4080.3635 - mae: 62.7439 - val_loss: 4047.3142 - val_mae: 62.5038
+Epoch 261/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 3958.1157 - mae: 61.7596 - val_loss: 3914.5593 - val_mae: 61.4408
+Epoch 262/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 3837.7954 - mae: 60.7799 - val_loss: 3840.3606 - val_mae: 60.8001
+Epoch 263/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 3719.3721 - mae: 59.7963 - val_loss: 3695.2515 - val_mae: 59.6212
+Epoch 264/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 3602.9487 - mae: 58.8155 - val_loss: 3596.8665 - val_mae: 58.7816
+Epoch 265/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 3488.5281 - mae: 57.8347 - val_loss: 3457.1992 - val_mae: 57.5845
+Epoch 266/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 3376.0847 - mae: 56.8541 - val_loss: 3356.3367 - val_mae: 56.6918
+Epoch 267/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 3265.5403 - mae: 55.8740 - val_loss: 3263.3733 - val_mae: 55.8616
+Epoch 268/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 3157.0745 - mae: 54.8934 - val_loss: 3132.3774 - val_mae: 54.6982
+Epoch 269/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 3050.5544 - mae: 53.9156 - val_loss: 3041.0571 - val_mae: 53.8346
+Epoch 270/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 2945.9045 - mae: 52.9361 - val_loss: 2918.4021 - val_mae: 52.6942
+Epoch 271/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 2843.3081 - mae: 51.9575 - val_loss: 2823.2312 - val_mae: 51.7912
+Epoch 272/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 2742.6267 - mae: 50.9796 - val_loss: 2744.6311 - val_mae: 51.0118
+Epoch 273/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 2643.8752 - mae: 50.0025 - val_loss: 2636.0547 - val_mae: 49.9220
+Epoch 274/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 2547.0815 - mae: 49.0246 - val_loss: 2529.8860 - val_mae: 48.8635
+Epoch 275/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 2452.2900 - mae: 48.0483 - val_loss: 2428.0928 - val_mae: 47.8083
+Epoch 276/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 2359.4404 - mae: 47.0729 - val_loss: 2364.8411 - val_mae: 47.1495
+Epoch 277/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 2268.5269 - mae: 46.0971 - val_loss: 2224.5847 - val_mae: 45.6590
+Epoch 278/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 2179.6450 - mae: 45.1214 - val_loss: 2159.2563 - val_mae: 44.9274
+Epoch 279/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 2092.6914 - mae: 44.1470 - val_loss: 2093.1665 - val_mae: 44.1421
+Epoch 280/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 2007.6132 - mae: 43.1739 - val_loss: 2002.5981 - val_mae: 43.1499
+Epoch 281/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1924.5226 - mae: 42.2006 - val_loss: 1887.0825 - val_mae: 41.8066
+Epoch 282/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1843.4294 - mae: 41.2280 - val_loss: 1839.8629 - val_mae: 41.1978
+Epoch 283/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1764.3049 - mae: 40.2565 - val_loss: 1752.2026 - val_mae: 40.1253
+Epoch 284/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1687.0896 - mae: 39.2870 - val_loss: 1687.7542 - val_mae: 39.2861
+Epoch 285/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1611.8364 - mae: 38.3165 - val_loss: 1586.2672 - val_mae: 38.0355
+Epoch 286/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1538.4532 - mae: 37.3488 - val_loss: 1532.4574 - val_mae: 37.2769
+Epoch 287/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1467.1392 - mae: 36.3780 - val_loss: 1466.6101 - val_mae: 36.3790
+Epoch 288/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1397.7087 - mae: 35.4121 - val_loss: 1377.1422 - val_mae: 35.1434
+Epoch 289/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1330.1718 - mae: 34.4460 - val_loss: 1318.8418 - val_mae: 34.3417
+Epoch 290/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1264.5417 - mae: 33.4799 - val_loss: 1245.9707 - val_mae: 33.2304
+Epoch 291/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1200.9424 - mae: 32.5153 - val_loss: 1195.9031 - val_mae: 32.4626
+Epoch 292/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1139.2098 - mae: 31.5533 - val_loss: 1132.2731 - val_mae: 31.4488
+Epoch 293/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1079.4115 - mae: 30.5920 - val_loss: 1058.5178 - val_mae: 30.2903
+Epoch 294/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 1021.5879 - mae: 29.6303 - val_loss: 1022.9377 - val_mae: 29.6829
+Epoch 295/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 965.7593 - mae: 28.6708 - val_loss: 952.9750 - val_mae: 28.4668
+Epoch 296/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 911.7920 - mae: 27.7154 - val_loss: 902.3029 - val_mae: 27.5910
+Epoch 297/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 859.7584 - mae: 26.7586 - val_loss: 842.4000 - val_mae: 26.5244
+Epoch 298/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 809.7059 - mae: 25.8058 - val_loss: 804.1865 - val_mae: 25.6813
+Epoch 299/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 761.4872 - mae: 24.8565 - val_loss: 762.0037 - val_mae: 24.9148
+Epoch 300/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 715.1708 - mae: 23.9075 - val_loss: 710.3324 - val_mae: 23.7997
+Epoch 301/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 670.7675 - mae: 22.9597 - val_loss: 662.2766 - val_mae: 22.8726
+Epoch 302/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 628.3246 - mae: 22.0152 - val_loss: 615.6097 - val_mae: 21.7264
+Epoch 303/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 587.7969 - mae: 21.0724 - val_loss: 574.6057 - val_mae: 20.8459
+Epoch 304/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 549.1010 - mae: 20.1380 - val_loss: 551.4603 - val_mae: 20.1326
+Epoch 305/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 512.3036 - mae: 19.2000 - val_loss: 492.9633 - val_mae: 18.8737
+Epoch 306/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 477.4512 - mae: 18.2710 - val_loss: 481.6336 - val_mae: 18.3806
+Epoch 307/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 444.5311 - mae: 17.3437 - val_loss: 439.6315 - val_mae: 17.2429
+Epoch 308/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 413.4231 - mae: 16.4516 - val_loss: 413.4655 - val_mae: 16.5253
+Epoch 309/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 384.1128 - mae: 15.6047 - val_loss: 369.1031 - val_mae: 15.3253
+Epoch 310/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 356.7208 - mae: 14.7949 - val_loss: 352.1658 - val_mae: 14.7364
+Epoch 311/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 331.1752 - mae: 14.0441 - val_loss: 334.2999 - val_mae: 14.2727
+Epoch 312/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 307.4463 - mae: 13.3515 - val_loss: 308.2940 - val_mae: 13.4684
+Epoch 313/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 285.6045 - mae: 12.6805 - val_loss: 275.1466 - val_mae: 12.4102
+Epoch 314/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 265.4747 - mae: 12.0650 - val_loss: 258.6801 - val_mae: 11.9053
+Epoch 315/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 247.0683 - mae: 11.5212 - val_loss: 240.5684 - val_mae: 11.4376
+Epoch 316/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 230.4240 - mae: 11.0637 - val_loss: 234.1407 - val_mae: 11.3142
+Epoch 317/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 215.5195 - mae: 10.6801 - val_loss: 214.5821 - val_mae: 10.7223
+Epoch 318/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 202.3205 - mae: 10.3862 - val_loss: 203.7595 - val_mae: 10.5327
+Epoch 319/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 190.7395 - mae: 10.1607 - val_loss: 179.8590 - val_mae: 9.9170
+Epoch 320/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 180.7669 - mae: 10.0129 - val_loss: 178.0969 - val_mae: 9.9954
+Epoch 321/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 172.3802 - mae: 9.9398 - val_loss: 175.4058 - val_mae: 10.1725
+Epoch 322/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 165.4330 - mae: 9.9423 - val_loss: 156.4021 - val_mae: 9.7432
+Epoch 323/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 159.7163 - mae: 9.9388 - val_loss: 162.2253 - val_mae: 10.0694
+Epoch 324/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 155.1984 - mae: 9.9658 - val_loss: 155.3887 - val_mae: 10.0420
+Epoch 325/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 151.7355 - mae: 9.9969 - val_loss: 148.9657 - val_mae: 9.9644
+Epoch 326/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 149.1983 - mae: 10.0386 - val_loss: 144.5606 - val_mae: 9.8684
+Epoch 327/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 147.3662 - mae: 10.0747 - val_loss: 152.5488 - val_mae: 10.2967
+Epoch 328/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 146.0719 - mae: 10.1162 - val_loss: 141.6025 - val_mae: 9.9420
+Epoch 329/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 145.2018 - mae: 10.1551 - val_loss: 145.9355 - val_mae: 10.1517
+Epoch 330/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 144.6273 - mae: 10.1856 - val_loss: 143.4066 - val_mae: 10.1670
+Epoch 331/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 144.2506 - mae: 10.2120 - val_loss: 144.2608 - val_mae: 10.1648
+Epoch 332/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 144.0079 - mae: 10.2335 - val_loss: 144.3532 - val_mae: 10.2499
+Epoch 333/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.8515 - mae: 10.2485 - val_loss: 140.4407 - val_mae: 10.0618
+Epoch 334/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.7522 - mae: 10.2633 - val_loss: 142.3756 - val_mae: 10.2090
+Epoch 335/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.6904 - mae: 10.2737 - val_loss: 139.2801 - val_mae: 10.0610
+Epoch 336/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.6515 - mae: 10.2833 - val_loss: 143.7060 - val_mae: 10.2498
+Epoch 337/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.6279 - mae: 10.2895 - val_loss: 139.8086 - val_mae: 10.0880
+Epoch 338/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.6140 - mae: 10.2955 - val_loss: 144.2480 - val_mae: 10.2781
+Epoch 339/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.6059 - mae: 10.3012 - val_loss: 143.5158 - val_mae: 10.2502
+Epoch 340/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.6005 - mae: 10.3035 - val_loss: 144.8231 - val_mae: 10.3535
+Epoch 341/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5977 - mae: 10.3044 - val_loss: 138.3107 - val_mae: 10.0423
+Epoch 342/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5946 - mae: 10.3090 - val_loss: 140.2173 - val_mae: 10.1549
+Epoch 343/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5940 - mae: 10.3096 - val_loss: 144.6205 - val_mae: 10.2944
+Epoch 344/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5931 - mae: 10.3102 - val_loss: 141.4081 - val_mae: 10.1918
+Epoch 345/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5922 - mae: 10.3085 - val_loss: 143.0194 - val_mae: 10.2565
+Epoch 346/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5905 - mae: 10.3125 - val_loss: 139.6850 - val_mae: 10.1162
+Epoch 347/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5907 - mae: 10.3129 - val_loss: 143.9090 - val_mae: 10.3312
+Epoch 348/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5905 - mae: 10.3124 - val_loss: 141.4458 - val_mae: 10.1462
+Epoch 349/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5908 - mae: 10.3115 - val_loss: 143.0057 - val_mae: 10.2703
+Epoch 350/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5907 - mae: 10.3145 - val_loss: 142.1670 - val_mae: 10.2068
+Epoch 351/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5908 - mae: 10.3135 - val_loss: 142.2963 - val_mae: 10.2396
+Epoch 352/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5908 - mae: 10.3139 - val_loss: 140.4536 - val_mae: 10.1515
+Epoch 353/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5907 - mae: 10.3140 - val_loss: 141.9133 - val_mae: 10.2080
+Epoch 354/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5913 - mae: 10.3140 - val_loss: 141.0476 - val_mae: 10.1812
+Epoch 355/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5904 - mae: 10.3139 - val_loss: 143.4417 - val_mae: 10.2421
+Epoch 356/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5904 - mae: 10.3147 - val_loss: 143.8930 - val_mae: 10.3055
+Epoch 357/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5898 - mae: 10.3150 - val_loss: 141.0199 - val_mae: 10.1529
+Epoch 358/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5920 - mae: 10.3129 - val_loss: 142.9196 - val_mae: 10.2398
+Epoch 359/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5904 - mae: 10.3149 - val_loss: 143.4296 - val_mae: 10.3041
+Epoch 360/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5909 - mae: 10.3137 - val_loss: 138.9825 - val_mae: 10.0634
+Epoch 361/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5900 - mae: 10.3132 - val_loss: 142.5129 - val_mae: 10.2211
+Epoch 362/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5904 - mae: 10.3166 - val_loss: 143.8179 - val_mae: 10.2909
+Epoch 363/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5901 - mae: 10.3167 - val_loss: 141.0341 - val_mae: 10.1951
+Epoch 364/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5910 - mae: 10.3167 - val_loss: 139.3900 - val_mae: 10.1180
+Epoch 365/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5907 - mae: 10.3148 - val_loss: 145.4351 - val_mae: 10.3250
+Epoch 366/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5912 - mae: 10.3140 - val_loss: 139.4181 - val_mae: 10.1252
+Epoch 367/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5907 - mae: 10.3129 - val_loss: 142.7213 - val_mae: 10.2478
+Epoch 368/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5916 - mae: 10.3138 - val_loss: 142.8329 - val_mae: 10.2473
+Epoch 369/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5907 - mae: 10.3156 - val_loss: 142.0943 - val_mae: 10.1990
+Epoch 370/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5899 - mae: 10.3128 - val_loss: 140.6672 - val_mae: 10.1618
+Epoch 371/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5904 - mae: 10.3148 - val_loss: 140.7466 - val_mae: 10.1720
+Epoch 372/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5911 - mae: 10.3150 - val_loss: 143.3875 - val_mae: 10.2670
+Epoch 373/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5897 - mae: 10.3134 - val_loss: 141.5506 - val_mae: 10.1969
+Epoch 374/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5905 - mae: 10.3148 - val_loss: 142.2950 - val_mae: 10.2248
+Epoch 375/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5896 - mae: 10.3138 - val_loss: 141.5612 - val_mae: 10.1867
+Epoch 376/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5910 - mae: 10.3160 - val_loss: 142.0198 - val_mae: 10.2141
+Epoch 377/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5900 - mae: 10.3142 - val_loss: 141.8606 - val_mae: 10.2107
+Epoch 378/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5898 - mae: 10.3154 - val_loss: 141.3102 - val_mae: 10.1846
+Epoch 379/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5914 - mae: 10.3153 - val_loss: 142.3783 - val_mae: 10.2346
+Epoch 380/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5909 - mae: 10.3155 - val_loss: 141.9812 - val_mae: 10.2038
+Epoch 381/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5902 - mae: 10.3151 - val_loss: 140.3785 - val_mae: 10.1398
+Epoch 382/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5915 - mae: 10.3138 - val_loss: 142.7343 - val_mae: 10.2534
+Epoch 383/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5901 - mae: 10.3151 - val_loss: 143.3055 - val_mae: 10.2553
+Epoch 384/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5907 - mae: 10.3154 - val_loss: 141.4713 - val_mae: 10.1879
+Epoch 385/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5907 - mae: 10.3148 - val_loss: 141.0031 - val_mae: 10.1766
+Epoch 386/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5912 - mae: 10.3155 - val_loss: 144.4071 - val_mae: 10.3140
+Epoch 387/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5914 - mae: 10.3153 - val_loss: 139.7133 - val_mae: 10.1323
+Epoch 388/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5906 - mae: 10.3148 - val_loss: 144.4176 - val_mae: 10.2846
+Epoch 389/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5909 - mae: 10.3145 - val_loss: 141.6813 - val_mae: 10.2084
+Epoch 390/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5896 - mae: 10.3150 - val_loss: 143.3588 - val_mae: 10.2627
+Epoch 391/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5899 - mae: 10.3164 - val_loss: 140.8710 - val_mae: 10.1718
+Epoch 392/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5918 - mae: 10.3146 - val_loss: 143.7408 - val_mae: 10.2497
+Epoch 393/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5900 - mae: 10.3136 - val_loss: 142.2825 - val_mae: 10.2809
+Epoch 394/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5906 - mae: 10.3127 - val_loss: 140.5858 - val_mae: 10.1295
+Epoch 395/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5911 - mae: 10.3144 - val_loss: 142.6083 - val_mae: 10.2381
+Epoch 396/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5908 - mae: 10.3137 - val_loss: 143.6949 - val_mae: 10.2735
+Epoch 397/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5902 - mae: 10.3161 - val_loss: 142.1309 - val_mae: 10.2408
+Epoch 398/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5900 - mae: 10.3141 - val_loss: 138.9744 - val_mae: 10.0676
+Epoch 399/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5910 - mae: 10.3151 - val_loss: 144.0235 - val_mae: 10.3189
+Epoch 400/400
+1000/1000 [==============================] - 141s 141ms/step - loss: 143.5915 - mae: 10.3125 - val_loss: 142.9709 - val_mae: 10.2899
+
