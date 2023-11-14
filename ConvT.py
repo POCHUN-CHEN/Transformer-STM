@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import cv2
 from sklearn.model_selection import train_test_split
+import keras_tuner as kt
 
 # 讀取Excel文件中的標簽數據
 excel_data = pd.read_excel('Circle_test.xlsx')
@@ -55,7 +56,6 @@ x_train, x_val, y_train, y_val = train_test_split(images, labels, test_size=0.2,
 
 # 創建數據生成器
 batch_size = 8
-
 train_data_generator = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
 val_data_generator = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
 

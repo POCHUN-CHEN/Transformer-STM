@@ -121,7 +121,7 @@ smaller_model.compile(optimizer='adam', loss='mean_squared_error', metrics=['mae
 # 訓練模型
 steps_per_epoch = len(x_train) // batch_size
 validation_steps = len(x_val) // batch_size
-epochs = 2000
+epochs = 700
 
 history = smaller_model.fit(
     train_data_generator,
