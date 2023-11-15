@@ -59,7 +59,7 @@ batch_size = 8
 train_data_generator = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
 val_data_generator = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
 
-# 定義模型建構函數
+# 定義Convolutional Transformer模型建構函數
 def build_model(hp):
     input_shape = (image_height, image_width, num_channels)
     inputs = keras.layers.Input(shape=input_shape)

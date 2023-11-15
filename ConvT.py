@@ -60,7 +60,7 @@ train_data_generator = tf.data.Dataset.from_tensor_slices((x_train, y_train)).ba
 val_data_generator = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
 
 # 定義Convolutional Transformer模型
-def complex_convolutional_transformer_model(input_shape):
+def convolutional_transformer_model(input_shape):
     inputs = keras.layers.Input(shape=input_shape)
 
     # Convolutional Blocks
@@ -91,7 +91,7 @@ def complex_convolutional_transformer_model(input_shape):
 
 # 創建複雜的Convolutional Transformer模型
 input_shape = (image_height, image_width, num_channels)
-complex_conv_transformer_model = complex_convolutional_transformer_model(input_shape)
+complex_conv_transformer_model = convolutional_transformer_model(input_shape)
 
 # 編譯模型
 optimizer = keras.optimizers.Adam(learning_rate=0.01)  # 設定學習率
@@ -107,4 +107,4 @@ history = complex_conv_transformer_model.fit(
 )
 
 # 保存模型權重
-complex_conv_transformer_model.save_weights('complex_convolutional_transformer_model_weights.h5')
+complex_conv_transformer_model.save_weights('convolutional_transformer_model_weights.h5')

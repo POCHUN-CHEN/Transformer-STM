@@ -6,21 +6,6 @@ import pandas as pd
 import cv2
 from sklearn.model_selection import train_test_split
 
-# # 創建自定義回調函數
-# class PredictionCallback(keras.callbacks.Callback):
-#     def __init__(self, test_data):
-#         self.test_data = test_data  # 傳入驗證集數據
-
-#     def on_epoch_end(self, epoch, logs=None):
-#         # 在每個訓練周期結束時進行預測
-#         x_test, y_test = self.test_data
-#         predictions = self.model.predict(x_test)
-
-#         # 在這裡可以印出預測結果
-#         print("Sample predictions: ", predictions[:5])
-#         # 打印預測結果
-#         print(f"Predictions at end of epoch {epoch}: {predictions}")
-
 # 讀取Excel文件中的標簽數據
 excel_data = pd.read_excel('Circle_test.xlsx')
 
@@ -85,8 +70,8 @@ batch_size = 8
 train_data_generator = data_generator(x_train, y_train, batch_size)
 val_data_generator = data_generator(x_val, y_val, batch_size)
 
-# 定義較小的Transformer模型
-def smaller_transformer_model(image_height, image_width, num_channels):
+# 定義Transformer模型
+def transformer_model(image_height, image_width, num_channels):
     inputs = keras.Input(shape=(image_height, image_width, num_channels))
     x = layers.Reshape((image_height * image_width, num_channels))(inputs)
     
@@ -103,8 +88,8 @@ def smaller_transformer_model(image_height, image_width, num_channels):
     model = keras.Model(inputs, outputs)
     return model
 
-# 創建較小的Transformer模型
-smaller_model = smaller_transformer_model(image_height, image_width, num_channels)
+# 創建Transformer模型
+smaller_model = transformer_model(image_height, image_width, num_channels)
 
 # 編譯模型
 # 定義一個指數衰減學習率
@@ -129,8 +114,7 @@ history = smaller_model.fit(
     epochs=epochs,
     validation_data=val_data_generator,
     validation_steps=validation_steps
-    # callbacks=[PredictionCallback((x_val, y_val))]  # 添加回調函數
 )
 
 # 保存模型權重
-smaller_model.save_weights('smaller_transformer_model_weights.h5')
+smaller_model.save_weights('transformer_model_weights.h5')
