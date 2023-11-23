@@ -10,17 +10,18 @@ import keras_tuner as kt
 # 讀取Excel文件中的標簽數據
 excel_data = pd.read_excel('Circle_test.xlsx')
 
-# 提取物理量標簽數據並轉換為NumPy數組，存儲為列表
-label_groups = []
-count = 0
-for i in range(1, 11):  # 10大組
-    for j in range(1, 6):  # 每大組包含5小組
-        labels = excel_data.loc[count, '50HZ']  # 只使用50HZ的標簽
-        label_groups.extend([labels] * 200)  # 將一組標簽重復200次
-        count += 1
-
-# 轉換為NumPy數組
-labels = np.array(label_groups)
+# 提取不同頻率的標簽數據
+frequencies = ['50HZ', '200HZ', '400HZ', '800HZ']
+labels_dict = {}
+for freq in frequencies:
+    label_groups = []
+    count = 0
+    for i in range(1, 11):  # 10大組
+        for j in range(1, 6):  # 每大組包含5小組
+            labels = excel_data.loc[count, freq]
+            label_groups.extend([labels] * 200)
+            count += 1
+    labels_dict[freq] = np.array(label_groups)
 
 # 定義圖像的高度、寬度和通道數
 image_height = 128
@@ -50,14 +51,6 @@ for group in range(1, 11):
 
 # 轉換為NumPy數組
 images = np.array(image_groups)
-
-# 將數據拆分為訓練集和驗證集
-x_train, x_val, y_train, y_val = train_test_split(images, labels, test_size=0.2, random_state=42)
-
-# 創建數據生成器
-batch_size = 8
-train_data_generator = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
-val_data_generator = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
 
 # 定義Convolution Transformer模型建構函數
 def build_model(hp):
@@ -92,25 +85,38 @@ def build_model(hp):
                   loss='mean_squared_error', metrics=['mae'])
     return model
 
-# 設置貝葉斯優化
-tuner = kt.BayesianOptimization(
-    build_model,
-    objective='val_mae',
-    max_trials=10,
-    num_initial_points=2,
-    directory='my_dir',
-    project_name='bayesian_opt_conv_transformer'
-)
+# 對於每個頻率進行模型訓練和保存
+for freq in frequencies:
+    # 獲取當前頻率的標簽
+    current_labels = labels_dict[freq]
 
-# 開始搜索
-tuner.search(train_data_generator, epochs=10, validation_data=val_data_generator)
+    # 拆分數據集
+    x_train, x_val, y_train, y_val = train_test_split(images, current_labels, test_size=0.2, random_state=42)
 
-# 獲取最佳超參數
-best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+    # 數據生成器
+    batch_size = 8
+    train_data_generator = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
+    val_data_generator = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
 
-# 使用最佳超參數創建模型
-model = build_model(best_hps)
-model.fit(train_data_generator, epochs=150, validation_data=val_data_generator)
+    # 設置貝葉斯優化
+    tuner = kt.BayesianOptimization(
+        build_model,
+        objective='val_mae',
+        max_trials=10,
+        num_initial_points=2,
+        directory='my_dir',
+        project_name=f'bayesian_opt_conv_transformer_{freq}'
+    )
 
-# 保存模型權重
-model.save_weights('bayesian_conv_transformer_model_weights.h5')
+    # 開始搜索
+    tuner.search(train_data_generator, epochs=10, validation_data=val_data_generator)
+
+    # 獲取最佳超參數並創建模型
+    best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+    model = build_model(best_hps)
+
+    # 訓練模型
+    model.fit(train_data_generator, epochs=150, validation_data=val_data_generator)
+
+    # 保存模型權重
+    model.save_weights(f'Weight/bayesian_conv_transformer_model_weights_{freq}.h5')

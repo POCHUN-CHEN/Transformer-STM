@@ -44,51 +44,58 @@ def build_model(hp):
                   loss='mean_squared_error', metrics=['mae'])
     return model
 
-# 創建與原始搜索相同配置的Keras Tuner實例
-tuner = kt.BayesianOptimization(
-    build_model,
-    objective='val_mae',
-    max_trials=10,
-    num_initial_points=2,
-    directory='my_dir',  # 確保這個目錄與原始搜索使用的目錄相同
-    project_name='bayesian_opt_conv_transformer'  # 項目名稱也應相同
-)
-
-# 重新加載最佳超參數
-best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
-
-# 構建模型
-model = build_model(best_hps)
-
-# 載入模型權重
-model.load_weights('bayesian_conv_transformer_model_weights.h5')
-
 # 載入要進行預測的圖像數據
 image_paths = ['Test_images/layer_81_1_3.jpg','Test_images/layer_15_6_1.jpg','Test_images/layer_183_9_5.jpg']
-images = []
 
+# 實際目標值
+actual_targets_dict = {
+    '50HZ': [335.17, 306.52, 315.02],  # 填入50HZ對應的目標值
+    '200HZ': [330.62, 301.98, 311.4],  # 填入200HZ對應的目標值
+    '400HZ': [298.66, 278.43, 288.77], # 填入400HZ對應的目標值
+    '800HZ': [215.62, 210.2, 221.59]   # 填入800HZ對應的目標值
+}
+
+# 載入和處理影像
+images = []
 for path in image_paths:
     image = cv2.imread(path)
     image = cv2.resize(image, (image_width, image_height))
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     images.append(image)
-
 images = np.array(images)
 
-# 進行預測
-predictions = model.predict(images)
+# 對於每個頻率進行模型載入、預測和評估
+for freq in ['50HZ', '200HZ', '400HZ', '800HZ']:
+    # 創建與原始搜索相同配置的Keras Tuner實例
+    tuner = kt.BayesianOptimization(
+        build_model,
+        objective='val_mae',
+        max_trials=10,
+        num_initial_points=2,
+        directory='my_dir',
+        project_name=f'bayesian_opt_conv_transformer_{freq}'
+    )
 
-# 實際目標值
-actual_targets = [335.17,306.52,315.02]
+    # 重新加載最佳超參數
+    best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
 
-# 計算 R^2 值
-r2 = r2_score(actual_targets, predictions)
+    # 構建模型
+    model = build_model(best_hps)
 
-# 列印 R^2 值
-print(f'R^2: {r2}')
+    # 載入模型權重
+    model.load_weights(f'Weight/bayesian_conv_transformer_model_weights_{freq}.h5')
 
-# 列印預測值
-print(f'Predictions: {predictions}')
+    # 進行預測
+    predictions = model.predict(images)
 
-# 列印模型簡報
-model.summary()
+    # 計算 R^2 值
+    r2 = r2_score(actual_targets_dict[freq], predictions)
+
+    # 列印結果
+    print(f'Frequency: {freq}')
+    print(f'Predictions: {predictions.flatten()}')
+    print(f'Actual: {actual_targets_dict[freq]}')
+    print(f'R^2: {r2}\n')
+
+# # 列印模型簡報
+# model.summary()
