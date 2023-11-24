@@ -102,7 +102,7 @@ for freq in frequencies:
     tuner = kt.BayesianOptimization(
         build_model,
         objective='val_mae',
-        max_trials=10,
+        max_trials=20,
         num_initial_points=2,
         directory='my_dir',
         project_name=f'bayesian_opt_conv_transformer_{freq}'
@@ -116,6 +116,7 @@ for freq in frequencies:
     model = build_model(best_hps)
 
     # 訓練模型
+    print(f'Frequency: {freq}')
     model.fit(train_data_generator, epochs=150, validation_data=val_data_generator)
 
     # 保存模型權重
