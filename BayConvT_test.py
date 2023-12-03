@@ -97,5 +97,5 @@ for freq in ['50HZ', '200HZ', '400HZ', '800HZ']:
     print(f'Actual: {actual_targets_dict[freq]}')
     print(f'R^2: {r2}\n')
 
-# # 列印模型簡報
-# model.summary()
+# 列印模型簡報
+model.summary()
