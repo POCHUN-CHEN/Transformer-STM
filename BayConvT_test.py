@@ -2,9 +2,11 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 import numpy as np
+import pandas as pd
 import cv2
 from sklearn.metrics import r2_score
 import keras_tuner as kt
+import matplotlib.pyplot as plt
 
 # 定義圖像的高度、寬度和通道數
 image_height = 128
@@ -44,25 +46,45 @@ def build_model(hp):
                   loss='mean_squared_error', metrics=['mae'])
     return model
 
-# 載入要進行預測的圖像數據
-image_paths = ['Test_images/layer_81_1_3.jpg','Test_images/layer_15_6_1.jpg','Test_images/layer_183_9_5.jpg']
+# 載入圖像數據
+image_groups = []
 
-# 實際目標值
-actual_targets_dict = {
-    '50HZ': [335.17, 306.52, 315.02],  # 填入50HZ對應的目標值
-    '200HZ': [330.62, 301.98, 311.4],  # 填入200HZ對應的目標值
-    '400HZ': [298.66, 278.43, 288.77], # 填入400HZ對應的目標值
-    '800HZ': [215.62, 210.2, 221.59]   # 填入800HZ對應的目標值
-}
+for group in range(1, 11):
+    group_images = []
+    for image_num in range(1, 6):
+        folder_name = f'circle(340x344)/trail{group:01d}_{image_num:02d}'
+        folder_path = f'data/{folder_name}/'
 
-# 載入和處理影像
-images = []
-for path in image_paths:
-    image = cv2.imread(path)
-    image = cv2.resize(image, (image_width, image_height))
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    images.append(image)
-images = np.array(images)
+        image_group = []
+        for i in range(200):
+            filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
+            image = cv2.imread(filename)
+            image = cv2.resize(image, (image_width, image_height))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            image_group.append(image)
+
+        group_images.extend(image_group)
+
+    image_groups.extend(group_images)
+
+# 轉換為NumPy數組
+images = np.array(image_groups)
+
+# 讀取Excel文件中的標簽數據
+excel_data = pd.read_excel('Circle_test.xlsx')
+
+# 提取不同頻率的標簽數據
+frequencies = ['50HZ', '200HZ', '400HZ', '800HZ']
+labels_dict = {}
+for freq in frequencies:
+    label_groups = []
+    count = 0
+    for i in range(1, 11):  # 10大組
+        for j in range(1, 6):  # 每大組包含5小組
+            labels = excel_data.loc[count, freq]
+            label_groups.extend([labels] * 200)
+            count += 1
+    labels_dict[freq] = np.array(label_groups)
 
 # 對於每個頻率進行模型載入、預測和評估
 for freq in ['50HZ', '200HZ', '400HZ', '800HZ']:
@@ -75,6 +97,9 @@ for freq in ['50HZ', '200HZ', '400HZ', '800HZ']:
         directory='my_dir',
         project_name=f'bayesian_opt_conv_transformer_{freq}'
     )
+    
+    # 獲取當前頻率的標簽
+    current_labels = labels_dict[freq]
 
     # 重新加載最佳超參數
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
@@ -89,13 +114,35 @@ for freq in ['50HZ', '200HZ', '400HZ', '800HZ']:
     predictions = model.predict(images)
 
     # 計算 R^2 值
-    r2 = r2_score(actual_targets_dict[freq], predictions)
+    r2 = r2_score(current_labels, predictions)
 
     # 列印結果
     print(f'Frequency: {freq}')
     print(f'Predictions: {predictions.flatten()}')
-    print(f'Actual: {actual_targets_dict[freq]}')
+    print(f'Actual: {current_labels}')
     print(f'R^2: {r2}\n')
+
+    # # 將預測值和實際值繪製成點圖（R^2圖）
+    # plt.scatter(current_labels, predictions.flatten())
+    # plt.title('Predictions vs Actual')
+    # plt.xlabel('Actual Values')
+    # plt.ylabel('Predicted Values')
+    # plt.show()
+
+    # 預測值與實際值分成兩條線顯示
+    # 生成圖片編號
+    image_numbers = np.arange(1, len(predictions) + 1)
+
+    # 繪製實際值和預測值的兩條線
+    plt.plot(image_numbers, current_labels, label='Actual', marker='o')
+    plt.plot(image_numbers, predictions.flatten(), label='Predicted', marker='x')
+
+    # 添加標籤和標題
+    plt.xlabel('Image Number')
+    plt.ylabel('Values')
+    plt.title('Actual vs Predicted')
+    plt.legend()  # 顯示圖例
+    plt.show()
 
 # 列印模型簡報
 model.summary()
