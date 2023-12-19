@@ -11,7 +11,7 @@ import keras_tuner as kt
 excel_data = pd.read_excel('Circle_test.xlsx')
 
 # 提取不同頻率的標簽數據
-frequencies = ['50HZ', '200HZ', '400HZ', '800HZ']
+frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 labels_dict = {}
 for freq in frequencies:
     label_groups = []
@@ -85,6 +85,12 @@ def build_model(hp):
                   loss='mean_squared_error', metrics=['mae'])
     return model
 
+# 初始化 DataFrame 以存儲記錄
+records = pd.DataFrame()
+
+# 設置 epoch 數目
+train_epochs = 3
+
 # 對於每個頻率進行模型訓練和保存
 for freq in frequencies:
     # 獲取當前頻率的標簽
@@ -102,14 +108,25 @@ for freq in frequencies:
     tuner = kt.BayesianOptimization(
         build_model,
         objective='val_mae',
-        max_trials=20,
+        max_trials=2,
         num_initial_points=2,
         directory='my_dir',
         project_name=f'bayesian_opt_conv_transformer_{freq}'
     )
 
+    # # 定義回調函數以保存最佳模型權重
+    # best_model_weights_callback = tf.keras.callbacks.ModelCheckpoint(
+    #     filepath=f'Weight/bayesian_conv_transformer_model_weights_{freq}.h5',
+    #     save_best_only=True,
+    #     save_weights_only=True,
+    #     monitor='val_mae',
+    #     mode='min',
+    #     verbose=1
+    # )
+
     # 開始搜索
-    tuner.search(train_data_generator, epochs=10, validation_data=val_data_generator)
+    # tuner.search(train_data_generator, epochs=10, validation_data=val_data_generator,callbacks=[best_model_weights_callback])
+    tuner.search(train_data_generator, epochs=2, validation_data=val_data_generator)
 
     # 獲取最佳超參數並創建模型
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
@@ -117,7 +134,22 @@ for freq in frequencies:
 
     # 訓練模型
     print(f'Frequency: {freq}')
-    model.fit(train_data_generator, epochs=150, validation_data=val_data_generator)
+    model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator)
+
+    # 獲取整體 epochs 的記錄
+    current_records = pd.DataFrame(model.history.history)
+
+    # 添加 epoch 列
+    current_records.insert(0, 'epoch', range(1, train_epochs + 1))
+
+    # 將當前記錄添加到整體記錄中
+    records = pd.concat([records, current_records], ignore_index=True)
+
+    # 將 DataFrame 寫入 Excel 檔案
+    records.to_excel(f'Records/bayesian_conv_transformer_records_{freq}.xlsx', index=False)
+
+    # 清除先前的訓練記錄
+    records = records.iloc[0:0]  # 刪除所有行，得到一個空的 DataFrame
 
     # 保存模型權重
     model.save_weights(f'Weight/bayesian_conv_transformer_model_weights_{freq}.h5')

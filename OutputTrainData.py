@@ -5,7 +5,7 @@ wb = openpyxl.Workbook()
 ws = wb.active
 
 # 設置列標題
-headers = ["Epoch", "Loss", "MAE", "Val_Loss", "Val_MAE"]
+headers = ["epoch", "loss", "mae", "val_loss", "val_mae"]
 ws.append(headers)
 
 # 讀取文本文件

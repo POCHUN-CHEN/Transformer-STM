@@ -74,7 +74,7 @@ images = np.array(image_groups)
 excel_data = pd.read_excel('Circle_test.xlsx')
 
 # 提取不同頻率的標簽數據
-frequencies = ['50HZ', '200HZ', '400HZ', '800HZ']
+frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 labels_dict = {}
 for freq in frequencies:
     label_groups = []
@@ -87,7 +87,7 @@ for freq in frequencies:
     labels_dict[freq] = np.array(label_groups)
 
 # 對於每個頻率進行模型載入、預測和評估
-for freq in ['50HZ', '200HZ', '400HZ', '800HZ']:
+for freq in frequencies:
     # 創建與原始搜索相同配置的Keras Tuner實例
     tuner = kt.BayesianOptimization(
         build_model,
@@ -122,12 +122,12 @@ for freq in ['50HZ', '200HZ', '400HZ', '800HZ']:
     print(f'Actual: {current_labels}')
     print(f'R^2: {r2}\n')
 
-    # # 將預測值和實際值繪製成點圖（R^2圖）
-    # plt.scatter(current_labels, predictions.flatten())
-    # plt.title('Predictions vs Actual')
-    # plt.xlabel('Actual Values')
-    # plt.ylabel('Predicted Values')
-    # plt.show()
+    # 將預測值和實際值繪製成點圖（R^2圖）
+    plt.scatter(current_labels, predictions.flatten())
+    plt.title('Predictions vs Actual')
+    plt.xlabel('Actual Values')
+    plt.ylabel('Predicted Values')
+    plt.show()
 
     # 預測值與實際值分成兩條線顯示
     # 生成圖片編號
