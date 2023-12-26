@@ -39,7 +39,7 @@ for freq in frequencies:
     plt.xlim(0, 150)  # 将Y轴范围限制在0到100之间
 
     # 設定 Y 軸範圍
-    plt.ylim(0, 500)  # 将Y轴范围限制在0到100之间
+    plt.ylim(0, 1000)  # 将Y轴范围限制在0到100之间
 
     # 顯示圖表
     plt.grid(True)

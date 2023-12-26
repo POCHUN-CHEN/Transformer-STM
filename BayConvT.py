@@ -89,7 +89,7 @@ def build_model(hp):
 records = pd.DataFrame()
 
 # 設置 epoch 數目
-train_epochs = 3
+train_epochs = 150
 
 # 對於每個頻率進行模型訓練和保存
 for freq in frequencies:
@@ -108,7 +108,7 @@ for freq in frequencies:
     tuner = kt.BayesianOptimization(
         build_model,
         objective='val_mae',
-        max_trials=2,
+        max_trials=20,
         num_initial_points=2,
         directory='my_dir',
         project_name=f'bayesian_opt_conv_transformer_{freq}'
@@ -126,7 +126,7 @@ for freq in frequencies:
 
     # 開始搜索
     # tuner.search(train_data_generator, epochs=10, validation_data=val_data_generator,callbacks=[best_model_weights_callback])
-    tuner.search(train_data_generator, epochs=2, validation_data=val_data_generator)
+    tuner.search(train_data_generator, epochs=10, validation_data=val_data_generator)
 
     # 獲取最佳超參數並創建模型
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
