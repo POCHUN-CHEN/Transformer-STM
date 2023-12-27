@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import cv2
 from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 import keras_tuner as kt
 import matplotlib.pyplot as plt
 
@@ -115,12 +116,16 @@ for freq in frequencies:
 
     # 計算 R^2 值
     r2 = r2_score(current_labels, predictions)
+    mse = mean_squared_error(current_labels, predictions.flatten())
+    mae = mean_absolute_error(current_labels, predictions.flatten())
 
     # 列印結果
     print(f'Frequency: {freq}')
     print(f'Predictions: {predictions.flatten()}')
     print(f'Actual: {current_labels}')
-    print(f'R^2: {r2}\n')
+    print(f'R^2: {r2}')
+    print(f'MSE: {mse}')
+    print(f'MAE: {mae}\n')
 
     # 將預測值和實際值繪製成點圖（R^2圖）
     plt.scatter(current_labels, predictions.flatten())
