@@ -53,7 +53,7 @@ tuner = kt.BayesianOptimization(
     max_trials=10,
     num_initial_points=2,
     directory='my_dir',
-    project_name=f'bayesian_opt_conv_transformer_50HZ'
+    project_name=f'bayesian_opt_conv_transformer_50HZ_μa'
 )
 
 # 重新加載最佳超參數
@@ -68,7 +68,7 @@ best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
 model = build_model(best_hps)
 
 # 載入模型權重
-model.load_weights(f'Weight/bayesian_conv_transformer_model_weights_50HZ.h5')
+model.load_weights(f'Weight/bayesian_conv_transformer_model_weights_50HZ_μa.h5')
 
 # Grad-CAM 函數
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
@@ -92,7 +92,7 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None
     return heatmap.numpy()
 
 # 加載並預處理圖像
-img_path = 'Test_images/layer_81_1_3.jpg'  # 替換為您的圖像路徑
+img_path = 'Test_images/layer_15_6_1.jpg'  # 替換為您的圖像路徑
 img = image.load_img(img_path, target_size=(128, 128), color_mode='grayscale')
 img_array = image.img_to_array(img)
 img_array = np.expand_dims(img_array, axis=0)
@@ -128,7 +128,7 @@ superimposed_img = heatmap_resized * 0.4 + img_np_color
 plt.figure(figsize=(18, 6))
 
 # 顯示第一張圖像
-plt.subplot(1, 3, 1)  # 1列2行的第1個
+plt.subplot(1, 4, 1)  # 1列2行的第1個
 plt.imshow(img_np_color / 255.0)
 plt.axis('off')
 plt.title('Original Image')
