@@ -145,7 +145,7 @@ for freq in frequencies:
         max_trials=20,
         num_initial_points=2,
         directory='my_dir',
-        project_name=f'bayesian_opt_conv_transformer_{freq}'
+        project_name=f'bayesian_opt_conv_transformer_par_{freq}'
     )
     
     # 獲取當前頻率的標簽
@@ -159,7 +159,7 @@ for freq in frequencies:
     model = build_model(best_hps)
 
     # 載入模型權重
-    model.load_weights(f'Weight/bayesian_conv_transformer_model_weights_{freq}.h5')
+    model.load_weights(f'Weight/bayesian_conv_transformer_par_model_weights_{freq}.h5')
 
     # 進行預測
     predictions = model.predict([images, current_proc])

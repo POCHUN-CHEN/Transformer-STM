@@ -141,7 +141,7 @@ tuner = kt.BayesianOptimization(
     max_trials=20,
     num_initial_points=2,
     directory='my_dir',
-    project_name=f'bayesian_opt_conv_transformer_{N}'
+    project_name=f'bayesian_opt_conv_transformer_par_{N}'
 )
 
 # 將數據拆分為訓練集和驗證集
@@ -176,10 +176,10 @@ current_records.insert(0, 'epoch', range(1, train_epochs + 1))
 records = pd.concat([records, current_records], ignore_index=True)
 
 # 將 DataFrame 寫入 Excel 檔案
-records.to_excel(f'Records/bayesian_conv_transformer_records_{N}.xlsx', index=False)
+records.to_excel(f'Records/bayesian_conv_transformer_par_records_{N}.xlsx', index=False)
 
 # 清除先前的訓練記錄
 records = records.iloc[0:0]  # 刪除所有行，得到一個空的 DataFrame
 
 # 保存模型權重
-model.save_weights(f'Weight/bayesian_conv_transformer_model_weights_{N}.h5')
+model.save_weights(f'Weight/bayesian_conv_transformer_par_model_weights_{N}.h5')
