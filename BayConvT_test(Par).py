@@ -9,6 +9,40 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 import keras_tuner as kt
 import matplotlib.pyplot as plt
 
+# 提取不同頻率
+# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
+# frequencies = ['50HZ_μa']
+
+# 定義範圍
+group_start = 1
+group_end = 10
+piece_num_start = 1
+piece_num_end = 5
+
+# 定義其他相關範圍或常數
+image_layers = 200  # 每顆影像的層數
+
+# 定義圖像的高度、寬度和通道數
+image_height = 128
+image_width = 128
+num_channels = 1
+
+# 設置 epoch 數目
+train_epochs = 200
+
+# 設置貝葉斯優化 epoch 數目
+max_trials=20
+
+# 讀取Excel文件中的標簽數據
+excel_data = pd.read_excel('Circle_test.xlsx')
+excel_process = pd.read_excel('Process_parameters.xlsx')
+
+
+################################################################################
+##################################### 定義 #####################################
+################################################################################
+
 # 定義Convolution Transformer模型建構函數
 def build_model(hp):
     image_inputs = keras.Input(shape=(image_height, image_width, num_channels))
@@ -44,14 +78,6 @@ def build_model(hp):
                   loss='mean_squared_error', metrics=['mae'])
     return model
 
-# 提取不同頻率
-frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-# frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
-# frequencies = ['50HZ_μa']
-
-# 讀取Excel文件中的標簽數據
-excel_data = pd.read_excel('Circle_test.xlsx')
-excel_process = pd.read_excel('Process_parameters.xlsx')
 
 ################################################################################
 ################################## 工件材料性質 ##################################
@@ -62,12 +88,10 @@ labels_dict = {}
 for freq in frequencies:
     label_groups = []
     count = 0
-    for i in range(1, 11):
-        for j in range(1, 6):  # 每大組包含5小組
-            # 添加條件判斷，跳過標籤第5小組
-            if j in [5]:
-                labels = excel_data.loc[count, freq]
-                label_groups.extend([labels] * 200)
+    for i in range(group_start, group_end + 1):
+        for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
+            labels = excel_data.loc[count, freq]
+            label_groups.extend([labels] * image_layers)
             count += 1
         
     labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組
@@ -82,15 +106,15 @@ Process_parameters = ['氧濃度', '雷射掃描速度', '雷射功率', '線間
 proc_dict = {}  # 儲存所有頻率全部大組製程參數
 for freq in frequencies:
     proc_groups = []  # 儲存全部大組製程參數
-    for i in range(1, 11):
+    for i in range(group_start, group_end + 1):
         group_procs = []  # 每大組的製程參數
         parameters_group = []
         for para in Process_parameters:
             parameters = excel_process.loc[i-1, para]
             parameters_group.append(parameters)
 
-        for j in range(5, 6):  # 每大組包含5小組，取第5大組
-            group_procs.extend([parameters_group] * 200)
+        for j in piece_num_end:  # 每大組包含5小組，取第5大組
+            group_procs.extend([parameters_group] * image_layers)
 
         proc_groups.extend(group_procs)
 
@@ -102,22 +126,17 @@ for freq in frequencies:
 #################################### 積層影像 ####################################
 #################################################################################
 
-# 定義圖像的高度、寬度和通道數
-image_height = 128
-image_width = 128
-num_channels = 1
-
 # 載入圖像數據
 image_groups = []
 
-for group in range(1, 11):
+for group in range(group_start, group_end + 1):
     group_images = []
-    for image_num in range(5, 6):
+    for image_num in piece_num_end:
         folder_name = f'circle(340x344)/trail{group:01d}_{image_num:02d}'
         folder_path = f'data/{folder_name}/'
 
         image_group = []
-        for i in range(200):
+        for i in range(image_layers):
             filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
             image = cv2.imread(filename)
             image = cv2.resize(image, (image_width, image_height))
@@ -142,7 +161,7 @@ for freq in frequencies:
     tuner = kt.BayesianOptimization(
         build_model,
         objective='val_mae',
-        max_trials=20,
+        max_trials=max_trials,
         num_initial_points=2,
         directory='my_dir',
         project_name=f'bayesian_opt_conv_transformer_par_{freq}'

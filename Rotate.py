@@ -34,7 +34,7 @@ if __name__ == "__main__":
         # start_index = 201  # 修改起始編號
 
         # 讀取並處理每張圖片
-        for group in range(1, 41):
+        for group in range(1, 11):
             for image_num in range(1, 5):
                 folder_name = f'trail{group:01d}_{image_num:02d}'
                 folder_path = os.path.join(input_folder, f'circle(340x344)/{folder_name}')

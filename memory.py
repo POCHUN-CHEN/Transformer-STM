@@ -51,7 +51,7 @@ while True:
     print("顯卡總記憶體 (Total):", round(gpu_memory['total'] / 1024, 2), "GB")
     print("顯卡已使用記憶體 (Used):", round(gpu_memory['used'] / 1024, 2), "GB")
     print("顯卡可用記憶體 (Free):", round(gpu_memory['free'] / 1024, 2), "GB")
-    print("顯卡記憶體使用率 (Usage):", round(gpu_memory['used'] / gpu_memory['total'], 2), "%")
+    print("顯卡記憶體使用率 (Usage):", round(gpu_memory['used'] / gpu_memory['total']*100, 2), "%")
 
     # 獲取顯卡計算資源使用率
     gpu_utilization = get_gpu_utilization()

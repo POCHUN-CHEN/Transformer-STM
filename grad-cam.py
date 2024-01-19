@@ -8,11 +8,6 @@ import matplotlib.pyplot as plt
 import keras_tuner as kt
 from PIL import Image
 
-# 定義圖像的高度、寬度和通道數
-image_height = 128
-image_width = 128
-num_channels = 1
-
 # 定義的Convolution Transformer模型
 def build_model(hp):
     inputs = keras.Input(shape=(image_height, image_width, num_channels))
@@ -46,30 +41,6 @@ def build_model(hp):
                   loss='mean_squared_error', metrics=['mae'])
     return model
 
-# 創建與原始搜索相同配置的Keras Tuner實例
-tuner = kt.BayesianOptimization(
-    build_model,
-    objective='val_mae',
-    max_trials=10,
-    num_initial_points=2,
-    directory='my_dir',
-    project_name=f'bayesian_opt_conv_transformer_50HZ_μa'
-)
-
-# 重新加載最佳超參數
-best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
-# best_hps = tuner.get_best_hyperparameters()
-# if best_hps:
-#     print("找到最佳超參數。")
-# else:
-#     print("沒有找到最佳超參數，請檢查超參數調整過程。")
-
-# 構建模型
-model = build_model(best_hps)
-
-# 載入模型權重
-model.load_weights(f'Weight/bayesian_conv_transformer_model_weights_50HZ_μa.h5')
-
 # Grad-CAM 函數
 def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
     grad_model = tf.keras.models.Model(
@@ -91,59 +62,120 @@ def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None
     heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
     return heatmap.numpy()
 
-# 加載並預處理圖像
-img_path = 'Test_images/layer_15_6_1.jpg'  # 替換為您的圖像路徑
-img = image.load_img(img_path, target_size=(128, 128), color_mode='grayscale')
-img_array = image.img_to_array(img)
-img_array = np.expand_dims(img_array, axis=0)
-img_array /= 255.0
+# 提取不同頻率
+# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+# frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
+frequencies = ['50HZ_μa']
 
-# 生成 Grad-CAM 熱力圖
-last_conv_layer_name = 'conv2d_2'  # 使用模型的最後一個卷積層名稱
-heatmap = make_gradcam_heatmap(img_array, model, last_conv_layer_name)
+#################################################################################
+#################################### 積層影像 ####################################
+#################################################################################
 
-# 將熱力圖轉換為8位整數格式
-heatmap = np.uint8(255 * heatmap)
+# 定義圖像的高度、寬度和通道數
+image_height = 128
+image_width = 128
+num_channels = 1
 
-# 應用顏色映射
-heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+# 載入圖像數據
+image_groups = []
 
-# 將 PIL 圖像轉換為 NumPy 數組
-img_np = np.array(img)
+for group in range(1, 11):
+    group_images = []
+    for image_num in range(5, 6):
+        folder_name = f'circle(340x344)/trail{group:01d}_{image_num:02d}'
+        folder_path = f'data/{folder_name}/'
 
-# 將單通道灰度圖像轉換為三通道圖像
-img_np_color = cv2.cvtColor(img_np, cv2.COLOR_GRAY2BGR)
+        image_group = []
+        for i in range(200):
+            filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
+            image = cv2.imread(filename)
+            image = cv2.resize(image, (image_width, image_height))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            image_group.append(image)
 
-# 將熱力圖調整為原始圖像的大小並應用到原圖
-heatmap_resized = cv2.resize(heatmap_colored, (img_np.shape[1], img_np.shape[0]))
-superimposed_img = heatmap_resized * 0.4 + img_np_color
+        group_images.extend(image_group)
 
-# # 顯示結果
-# plt.figure(figsize=(10, 10))
-# plt.imshow(superimposed_img / 255.0)
-# plt.axis('off')
-# plt.show()
+    image_groups.extend(group_images)
 
-# 創建一個圖形和三個子圖
-plt.figure(figsize=(18, 6))
+# 轉換為NumPy數組
+images = np.array(image_groups)
 
-# 顯示第一張圖像
-plt.subplot(1, 4, 1)  # 1列2行的第1個
-plt.imshow(img_np_color / 255.0)
-plt.axis('off')
-plt.title('Original Image')
 
-# 顯示第二張圖像
-plt.subplot(1, 3, 2)  # 1列2行的第2個
-plt.imshow(heatmap_resized / 255.0)
-plt.axis('off')
-plt.title('Heatmap')
+#################################################################################
+##################################### 熱力圖 #####################################
+#################################################################################
 
-# 顯示第三張圖像
-plt.subplot(1, 3, 3)  # 1列2行的第3個
-plt.imshow(superimposed_img / 255.0)
-plt.axis('off')
-plt.title('Superimposed')
+# 對於每個頻率進行模型載入、預測和評估
+for freq in frequencies:
+    # 設置貝葉斯優化
+    tuner = kt.BayesianOptimization(
+        build_model,
+        objective='val_mae',
+        max_trials=10,
+        num_initial_points=2,
+        directory='my_dir',
+        project_name=f'bayesian_opt_conv_transformer_{freq}'
+    )
 
-# 顯示圖形
-plt.show()
+    # 重新加載最佳超參數
+    best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+
+    # 構建模型
+    model = build_model(best_hps)
+
+    # 載入模型權重
+    model.load_weights(f'Weight/bayesian_conv_transformer_model_weights_{freq}.h5')
+
+
+    # 圖像正則化
+    images /= 255.0
+
+    # 生成 Grad-CAM 熱力圖
+    last_conv_layer_name = 'conv2d_2'  # 使用模型的最後一個卷積層名稱
+    heatmap = make_gradcam_heatmap(images, model, last_conv_layer_name)
+
+    # 將熱力圖轉換為8位整數格式
+    heatmap = np.uint8(255 * heatmap)
+
+    # 應用顏色映射
+    heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+
+    # # 將 PIL 圖像轉換為 NumPy 數組
+    # img_np = np.array(img)
+
+    # 將單通道灰度圖像轉換為三通道圖像
+    img_np_color = cv2.cvtColor(images, cv2.COLOR_GRAY2BGR)
+
+    # 將熱力圖調整為原始圖像的大小並應用到原圖
+    heatmap_resized = cv2.resize(heatmap_colored, (images.shape[1], images.shape[0]))
+    superimposed_img = heatmap_resized * 0.4 + img_np_color
+
+    # # 顯示結果
+    # plt.figure(figsize=(10, 10))
+    # plt.imshow(superimposed_img / 255.0)
+    # plt.axis('off')
+    # plt.show()
+
+    # 創建一個圖形和三個子圖
+    plt.figure(figsize=(18, 6))
+
+    # 顯示第一張圖像
+    plt.subplot(1, 4, 1)  # 1列2行的第1個
+    plt.imshow(img_np_color / 255.0)
+    plt.axis('off')
+    plt.title('Original Image')
+
+    # 顯示第二張圖像
+    plt.subplot(1, 3, 2)  # 1列2行的第2個
+    plt.imshow(heatmap_resized / 255.0)
+    plt.axis('off')
+    plt.title('Heatmap')
+
+    # 顯示第三張圖像
+    plt.subplot(1, 3, 3)  # 1列2行的第3個
+    plt.imshow(superimposed_img / 255.0)
+    plt.axis('off')
+    plt.title('Superimposed')
+
+    # 顯示圖形
+    plt.show()
