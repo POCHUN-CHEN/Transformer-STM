@@ -6,6 +6,7 @@ import pandas as pd
 import cv2
 import keras_tuner as kt
 
+from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
 
 # 提取不同頻率
@@ -183,10 +184,13 @@ for freq in frequencies:
     # 獲取最佳超參數並創建模型
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
 
+    # 早期停止功能
+    early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=10, verbose=1)
+
     # 使用最佳超參數創建模型
     model = build_model(best_hps)
     print(f'Frequency: {freq}')
-    model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator)
+    model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[early_stopping])
 
     # 初始化 DataFrame 以存儲記錄（抓取訓練過程的趨勢資料）
     records = pd.DataFrame()
