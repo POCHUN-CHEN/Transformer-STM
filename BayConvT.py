@@ -115,7 +115,7 @@ for group in range(group_start, group_end + 1):
             image = cv2.imread(filename)
             image = cv2.resize(image, (image_width, image_height))
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            # image = image / 255.0  # 標準化
+            image = image / 255.0  # 標準化
             image_group.append(image)
 
         group_images.extend(image_group)
