@@ -4,11 +4,12 @@ from tensorflow.keras import layers
 import numpy as np
 import pandas as pd
 import cv2
+from sklearn.model_selection import KFold
 import keras_tuner as kt
 
 # 提取不同頻率
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
+frequencies = ['400HZ_μa', '800HZ_μa']
 # frequencies = ['50HZ_μa']
 
 # 定義範圍
@@ -31,6 +32,8 @@ train_epochs = 200
 # 設置貝葉斯優化 epoch 數目
 max_trials=20
 trials_epochs=10
+
+k_fold_splits = 5
 
 # 讀取Excel文件中的標簽數據
 excel_data = pd.read_excel('Circle_test.xlsx')
@@ -75,6 +78,44 @@ def build_model(hp):
     model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', 1e-4, 1e-2, sampling='log')),
                   loss='mean_squared_error', metrics=['mae'])
     return model
+
+# def load_images_and_proc():
+#     # 初始化字典和數組
+#     labels_dict = {}
+#     proc_dict = {}
+#     image_groups = []
+
+#     # 加載圖像數據
+#     for group in range(group_start, group_end + 1):
+#         for image_num in range(piece_num_start, piece_num_end + 1):
+#             folder_name = f'circle(340x344)/trail{group:01d}_{image_num:02d}'
+#             folder_path = f'data/{folder_name}/'
+#             for i in range(image_layers):
+#                 filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
+#                 image = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)  # 直接讀取為灰階圖像
+#                 image = cv2.resize(image, (image_width, image_height))
+#                 image_groups.append(image)
+
+#     images = np.array(image_groups).reshape(-1, image_height, image_width, num_channels)
+
+#     # 加載材料數據標簽和製程參數
+#     for freq in frequencies:
+#         label_groups = []
+#         proc_groups = []
+#         for i in range(group_start, group_end + 1):
+#             for j in range(piece_num_start, piece_num_end + 1):
+#                 index = (i - 1) * piece_num_end + (j - 1)
+#                 labels = excel_data.loc[index, freq]
+#                 label_groups.extend([labels] * image_layers)
+                
+#                 # 提取製程參數
+#                 process_params = excel_process.loc[index, Process_parameters].values
+#                 proc_groups.extend([process_params] * image_layers)
+
+#         labels_dict[freq] = np.array(label_groups)
+#         proc_dict[freq] = np.array(proc_groups)
+
+#     return images, labels_dict, proc_dict
 
 
 ################################################################################
@@ -153,85 +194,107 @@ images = np.array(image_groups)
 #################################### 測試模型 ####################################
 #################################################################################
 
+# K-折交叉驗證
+kf = KFold(n_splits=k_fold_splits)
+
 # 對於每個頻率進行模型訓練和保存
 for freq in frequencies:
-    # 定義訓練集和驗證集
-    x_train, y_train, proc_train = [], [], []
-    x_val, y_val, proc_val = [], [], []
+    # # 定義訓練集和驗證集
+    # x_train, y_train, proc_train = [], [], []
+    # x_val, y_val, proc_val = [], [], []
 
-    for group in range(group_start, group_end + 1):
-        for image_num in range(piece_num_start, piece_num_end + 1):
-            # 計算在 labels_dict 和 proc_dict 中的索引
-            index = (group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers
+    # for group in range(group_start, group_end + 1):
+    #     for image_num in range(piece_num_start, piece_num_end + 1):
+    #         # 計算在 labels_dict 和 proc_dict 中的索引
+    #         index = (group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers
 
-            # 選取第五小組作為驗證集
-            if image_num == 5:
-                x_val.extend(images[index:index + image_layers])
-                y_val.extend(labels_dict[freq][index:index + image_layers])
-                proc_val.extend(proc_dict[freq][index:index + image_layers])
-            else:
-                x_train.extend(images[index:index + image_layers])
-                y_train.extend(labels_dict[freq][index:index + image_layers])
-                proc_train.extend(proc_dict[freq][index:index + image_layers])
+    #         # 選取第五小組作為驗證集
+    #         if image_num == 5:
+    #             x_val.extend(images[index:index + image_layers])
+    #             y_val.extend(labels_dict[freq][index:index + image_layers])
+    #             proc_val.extend(proc_dict[freq][index:index + image_layers])
+    #         else:
+    #             x_train.extend(images[index:index + image_layers])
+    #             y_train.extend(labels_dict[freq][index:index + image_layers])
+    #             proc_train.extend(proc_dict[freq][index:index + image_layers])
 
-    # 轉換為 NumPy 數組
-    x_train = np.array(x_train)
-    y_train = np.array(y_train)
-    proc_train = np.array(proc_train)
-    x_val = np.array(x_val)
-    y_val = np.array(y_val)
-    proc_val = np.array(proc_val)
+    # # 轉換為 NumPy 數組
+    # x_train = np.array(x_train)
+    # y_train = np.array(y_train)
+    # proc_train = np.array(proc_train)
+    # x_val = np.array(x_val)
+    # y_val = np.array(y_val)
+    # proc_val = np.array(proc_val)
     
-    # 設置貝葉斯優化
-    tuner = kt.BayesianOptimization(
-        build_model,
-        objective='val_mae',
-        max_trials=max_trials,
-        num_initial_points=2,
-        directory='my_dir',
-        project_name=f'bayesian_opt_conv_transformer_par_{freq}'
-    )
+    # # 設置貝葉斯優化
+    # tuner = kt.BayesianOptimization(
+    #     build_model,
+    #     objective='val_mae',
+    #     max_trials=max_trials,
+    #     num_initial_points=2,
+    #     directory='my_dir',
+    #     project_name=f'bayesian_opt_conv_transformer_par_{freq}'
+    # )
     
     # 獲取當前頻率的標簽
     current_labels = labels_dict[freq]
     current_proc = proc_dict[freq]
 
-    # 將數據拆分為訓練集和驗證集
-    x_train, x_val, y_train, y_val, proc_train, proc_val = train_test_split(images, labels_dict[freq], proc_dict[freq], test_size=0.25, random_state=42)
+    for fold, (train_index, val_index) in enumerate(kf.split(images)):
+        print(f"Training on fold {fold+1}/{k_fold_splits} for frequency {freq}")
 
-    # 數據生成器
-    batch_size = 8
-    train_data_generator = tf.data.Dataset.from_tensor_slices(((x_train, proc_train), y_train)).batch(batch_size)
-    val_data_generator = tf.data.Dataset.from_tensor_slices(((x_val, proc_val), y_val)).batch(batch_size)
+        # 分割數據集
+        x_train, x_val = images[train_index], images[val_index]
+        y_train, y_val = current_labels[train_index], current_labels[val_index]
+        proc_train, proc_val = current_proc[train_index], current_proc[val_index]
 
-    # 開始搜索
-    tuner.search(train_data_generator, epochs=trials_epochs, validation_data=val_data_generator)
+        # 設置貝葉斯優化
+        tuner = kt.BayesianOptimization(
+            build_model,
+            objective='val_mae',
+            max_trials=max_trials,
+            directory='my_dir',
+            project_name=f'bayesian_opt_conv_transformer_par_{freq}_fold_{fold+1}'
+        )
 
-    # 獲取最佳超參數並創建模型
-    best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        # 將數據拆分為訓練集和驗證集
+        # x_train, x_val, y_train, y_val, proc_train, proc_val = train_test_split(images, labels_dict[freq], proc_dict[freq], test_size=0.25, random_state=42)
 
-    # 使用最佳超參數創建模型
-    model = build_model(best_hps)
-    print(f'Frequency: {freq}')
-    model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator)
+        # 數據生成器
+        batch_size = 8
+        train_data_generator = tf.data.Dataset.from_tensor_slices(((x_train, proc_train), y_train)).batch(batch_size)
+        val_data_generator = tf.data.Dataset.from_tensor_slices(((x_val, proc_val), y_val)).batch(batch_size)
 
-    # 初始化 DataFrame 以存儲記錄（抓取訓練過程的趨勢資料）
-    records = pd.DataFrame()
-    
-    # 獲取整體 epochs 的記錄
-    current_records = pd.DataFrame(model.history.history)
+        # 開始搜索
+        tuner.search(train_data_generator, epochs=trials_epochs, validation_data=val_data_generator)
 
-    # 添加 epoch 列
-    current_records.insert(0, 'epoch', range(1, train_epochs + 1))
+        # 獲取最佳超參數並創建模型
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
 
-    # 將當前記錄添加到整體記錄中
-    records = pd.concat([records, current_records], ignore_index=True)
+        # 使用最佳超參數創建模型
+        model = build_model(best_hps)
+        print(f'Frequency: {freq}')
+        model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator)
 
-    # 將 DataFrame 寫入 Excel 檔案
-    records.to_excel(f'Records/bayesian_conv_transformer_par_records_{freq}.xlsx', index=False)
+        # 初始化 DataFrame 以存儲記錄（抓取訓練過程的趨勢資料）
+        records = pd.DataFrame()
+        
+        # 獲取整體 epochs 的記錄
+        current_records = pd.DataFrame(model.history.history)
 
-    # 清除先前的訓練記錄
-    records = records.iloc[0:0]  # 刪除所有行，得到一個空的 DataFrame
+        # 添加 epoch 列
+        current_records.insert(0, 'epoch', range(1, train_epochs + 1))
 
-    # 保存模型權重
-    model.save_weights(f'Weight/bayesian_conv_transformer_par_model_weights_{freq}.h5')
+        # 將當前記錄添加到整體記錄中
+        records = pd.concat([records, current_records], ignore_index=True)
+
+        # 將 DataFrame 寫入 Excel 檔案
+        # records.to_excel(f'Records/bayesian_conv_transformer_par_records_{freq}.xlsx', index=False)
+        records.to_excel(f'Weight/bayesian_conv_transformer_par_model_weights_{freq}_fold_{fold+1}.xlsx', index=False)
+
+        # 清除先前的訓練記錄
+        records = records.iloc[0:0]  # 刪除所有行，得到一個空的 DataFrame
+
+        # 保存模型權重
+        # model.save_weights(f'Weight/bayesian_conv_transformer_par_model_weights_{freq}.h5')
+        model.save_weights(f'Weight/bayesian_conv_transformer_par_model_weights_{freq}_fold_{fold+1}.h5')

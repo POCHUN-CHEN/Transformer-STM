@@ -3,11 +3,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
+# frequencies = ['50HZ_μa']
 
 for freq in frequencies:
     # 從Excel文件讀取數據
     wb = openpyxl.load_workbook(f'bayesian_conv_transformer_records_{freq}.xlsx')
+    # wb = openpyxl.load_workbook(f'bayesian_conv_transformer_par_records_{freq}.xlsx')
     ws = wb.active
 
     # 提取數據並存儲在字典中，以便按列訪問

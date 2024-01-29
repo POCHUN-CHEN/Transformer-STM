@@ -6,6 +6,8 @@ import pandas as pd
 import cv2
 import keras_tuner as kt
 
+from sklearn.model_selection import train_test_split
+
 # 提取不同頻率
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
@@ -23,6 +25,8 @@ image_layers = 200  # 每顆影像的層數
 # 定義圖像的高度、寬度和通道數
 image_height = 128
 image_width = 128
+# image_height = 340
+# image_width = 340
 num_channels = 1
 
 # 設置 epoch 數目
@@ -88,7 +92,7 @@ for freq in frequencies:
             labels = excel_data.loc[count, freq]
             label_groups.extend([labels] * image_layers)
             count += 1
-        
+            
     labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組
 
 
@@ -111,6 +115,7 @@ for group in range(group_start, group_end + 1):
             image = cv2.imread(filename)
             image = cv2.resize(image, (image_width, image_height))
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            # image = image / 255.0  # 標準化
             image_group.append(image)
 
         group_images.extend(image_group)
@@ -162,7 +167,10 @@ for freq in frequencies:
     )
     
     # 獲取當前頻率的標簽
-    current_labels = labels_dict[freq]
+    # current_labels = labels_dict[freq]
+
+    # 將數據拆分為訓練集和驗證集
+    # x_train, x_val, y_train, y_val = train_test_split(images, labels_dict[freq], test_size=0.2, random_state=42)
 
     # 數據生成器
     batch_size = 8

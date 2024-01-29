@@ -87,8 +87,9 @@ for freq in frequencies:
     count = 0
     for i in range(group_start, group_end + 1):
         for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
-            labels = excel_data.loc[count, freq]
-            label_groups.extend([labels] * image_layers)
+            if j in [piece_num_end]:
+                labels = excel_data.loc[count, freq]
+                label_groups.extend([labels] * image_layers)
             count += 1
 
     labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組
@@ -103,9 +104,10 @@ image_groups = []
 
 for group in range(group_start, group_end + 1):
     group_images = []
-    for image_num in piece_num_end:
+    for image_num in range(piece_num_end, piece_num_end + 1):
         folder_name = f'circle(340x344)/trail{group:01d}_{image_num:02d}'
         folder_path = f'data/{folder_name}/'
+        print(folder_path)
 
         image_group = []
         for i in range(image_layers):

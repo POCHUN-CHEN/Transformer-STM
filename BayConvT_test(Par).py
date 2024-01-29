@@ -7,6 +7,7 @@ import cv2
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 import keras_tuner as kt
+from sklearn.model_selection import KFold
 import matplotlib.pyplot as plt
 
 # 提取不同頻率
@@ -16,7 +17,7 @@ frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
 
 # 定義範圍
 group_start = 1
-group_end = 10
+group_end = 40
 piece_num_start = 1
 piece_num_end = 5
 
@@ -90,8 +91,9 @@ for freq in frequencies:
     count = 0
     for i in range(group_start, group_end + 1):
         for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
-            labels = excel_data.loc[count, freq]
-            label_groups.extend([labels] * image_layers)
+            if j in [piece_num_end]:
+                labels = excel_data.loc[count, freq]
+                label_groups.extend([labels] * image_layers)
             count += 1
         
     labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組
@@ -113,7 +115,7 @@ for freq in frequencies:
             parameters = excel_process.loc[i-1, para]
             parameters_group.append(parameters)
 
-        for j in piece_num_end:  # 每大組包含5小組，取第5大組
+        for j in [piece_num_end]:  # 每大組包含5小組，取第5大組
             group_procs.extend([parameters_group] * image_layers)
 
         proc_groups.extend(group_procs)
@@ -131,9 +133,10 @@ image_groups = []
 
 for group in range(group_start, group_end + 1):
     group_images = []
-    for image_num in piece_num_end:
+    for image_num in [piece_num_end]:
         folder_name = f'circle(340x344)/trail{group:01d}_{image_num:02d}'
         folder_path = f'data/{folder_name}/'
+        print(folder_path)
 
         image_group = []
         for i in range(image_layers):
@@ -157,66 +160,67 @@ images = np.array(image_groups)
 
 # 對於每個頻率進行模型載入、預測和評估
 for freq in frequencies:
-    # 設置貝葉斯優化
-    tuner = kt.BayesianOptimization(
-        build_model,
-        objective='val_mae',
-        max_trials=max_trials,
-        num_initial_points=2,
-        directory='my_dir',
-        project_name=f'bayesian_opt_conv_transformer_par_{freq}'
-    )
-    
-    # 獲取當前頻率的標簽
-    current_labels = labels_dict[freq]
-    current_proc = proc_dict[freq]
+    for fold in range(5):
+        # 設置貝葉斯優化
+        tuner = kt.BayesianOptimization(
+            build_model,
+            objective='val_mae',
+            max_trials=max_trials,
+            num_initial_points=2,
+            directory='my_dir',
+            project_name=f'bayesian_opt_conv_transformer_par_{freq}_fold_{fold+1}'
+        )
+        
+        # 獲取當前頻率的標簽
+        current_labels = labels_dict[freq]
+        current_proc = proc_dict[freq]
 
-    # 重新加載最佳超參數
-    best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        # 重新加載最佳超參數
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
 
-    # 構建模型
-    model = build_model(best_hps)
+        # 構建模型
+        model = build_model(best_hps)
 
-    # 載入模型權重
-    model.load_weights(f'Weight/bayesian_conv_transformer_par_model_weights_{freq}.h5')
+        # 載入模型權重
+        model.load_weights(f'Weight/bayesian_conv_transformer_par_model_weights_{freq}_fold_{fold+1}.h5')
 
-    # 進行預測
-    predictions = model.predict([images, current_proc])
+        # 進行預測
+        predictions = model.predict([images, current_proc])
 
-    # 計算 R^2 值
-    r2 = r2_score(current_labels, predictions)
-    mse = mean_squared_error(current_labels, predictions.flatten())
-    mae = mean_absolute_error(current_labels, predictions.flatten())
+        # 計算 R^2 值
+        r2 = r2_score(current_labels, predictions)
+        mse = mean_squared_error(current_labels, predictions.flatten())
+        mae = mean_absolute_error(current_labels, predictions.flatten())
 
-    # 列印結果
-    print(f'Frequency: {freq}')
-    print(f'Predictions: {predictions.flatten()}')
-    print(f'Actual: {current_labels}')
-    print(f'R^2: {r2}')
-    print(f'MSE: {mse}')
-    print(f'MAE: {mae}\n')
+        # 列印結果
+        print(f'Frequency: {freq}')
+        print(f'Predictions: {predictions.flatten()}')
+        print(f'Actual: {current_labels}')
+        print(f'R^2: {r2}')
+        print(f'MSE: {mse}')
+        print(f'MAE: {mae}\n')
 
-    # 將預測值和實際值繪製成點圖（R^2圖）
-    plt.scatter(current_labels, predictions.flatten())
-    plt.title('Predictions vs Actual')
-    plt.xlabel('Actual Values')
-    plt.ylabel('Predicted Values')
-    plt.show()
+        # 將預測值和實際值繪製成點圖（R^2圖）
+        plt.scatter(current_labels, predictions.flatten())
+        plt.title('Predictions vs Actual')
+        plt.xlabel('Actual Values')
+        plt.ylabel('Predicted Values')
+        plt.show()
 
-    # 預測值與實際值分成兩條線顯示
-    # 生成圖片編號
-    image_numbers = np.arange(1, len(predictions) + 1)
+        # 預測值與實際值分成兩條線顯示
+        # 生成圖片編號
+        image_numbers = np.arange(1, len(predictions) + 1)
 
-    # 繪製實際值和預測值的兩條線
-    plt.plot(image_numbers, current_labels, label='Actual', marker='o')
-    plt.plot(image_numbers, predictions.flatten(), label='Predicted', marker='x')
+        # 繪製實際值和預測值的兩條線
+        plt.plot(image_numbers, current_labels, label='Actual', marker='o')
+        plt.plot(image_numbers, predictions.flatten(), label='Predicted', marker='x')
 
-    # 添加標籤和標題
-    plt.xlabel('Image Number')
-    plt.ylabel('Values')
-    plt.title('Actual vs Predicted')
-    plt.legend()  # 顯示圖例
-    plt.show()
+        # 添加標籤和標題
+        plt.xlabel('Image Number')
+        plt.ylabel('Values')
+        plt.title('Actual vs Predicted')
+        plt.legend()  # 顯示圖例
+        plt.show()
 
 # 列印模型簡報
 model.summary()
