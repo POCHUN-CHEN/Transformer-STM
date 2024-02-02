@@ -8,8 +8,6 @@ import keras_tuner as kt
 import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import StandardScaler # 標準化製程參數
-# from tensorflow.keras.regularizers import l1
-from tensorflow.keras.regularizers import l2
 
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -47,39 +45,37 @@ excel_process = pd.read_excel('Process_parameters.xlsx')
 ##################################### 定義 #####################################
 ################################################################################
 
-# 定義Convolution Transformer模型建構函數
-def build_model(hp):
-    image_inputs = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32') # 更改數值精度
-    process_inputs = keras.Input(shape=(proc_dict[freq].shape[1],), dtype='float32')
+def build_simple_model(hp):
+    # 製程參數輸入部分
+    process_inputs = keras.Input(shape=(proc_dict[freq].shape[1],))
+    
+    # 第一層 - 密集層
+    x = layers.Dense(hp.Int('units_1', min_value=32, max_value=512, step=32), activation='relu')(process_inputs)
+    x = layers.Dropout(hp.Float('dropout_1', min_value=0.0, max_value=0.5, step=0.1))(x)
+    
+    # 第二層 - 密集層
+    x = layers.Dense(hp.Int('units_2', min_value=32, max_value=512, step=32), activation='relu')(x)
+    x = layers.Dropout(hp.Float('dropout_2', min_value=0.0, max_value=0.5, step=0.1))(x)
+    
+    # 第三層 - 密集層
+    x = layers.Dense(hp.Int('units_3', min_value=32, max_value=512, step=32), activation='relu')(x)
+    
+    # 第四層 - 密集層
+    x = layers.Dense(hp.Int('units_4', min_value=32, max_value=512, step=32), activation='relu')(x)
+    
+    # 第五層 - 密集層
+    x = layers.Dense(hp.Int('units_5', min_value=32, max_value=512, step=32), activation='relu')(x)
+    
+    # 輸出層
+    outputs = layers.Dense(1)(x)  # 假設是回歸任務
 
-    # Convolutional Blocks
-    x = keras.layers.Conv2D(hp.Int('conv_1_filter', min_value=32, max_value=128, step=32), 
-                            (3, 3), activation='relu', kernel_regularizer=l2(0.00))(image_inputs) # 添加 L2 正則化
-    x = keras.layers.MaxPooling2D((2, 2))(x)
-    x = keras.layers.Conv2D(hp.Int('conv_2_filter', min_value=64, max_value=256, step=64), 
-                            (3, 3), activation='relu')(x)
-    x = keras.layers.MaxPooling2D((2, 2))(x)
-    x = keras.layers.Conv2D(hp.Int('conv_3_filter', min_value=128, max_value=512, step=128), 
-                            (3, 3), activation='relu')(x)
-    x = keras.layers.MaxPooling2D((2, 2))(x)
-
-    # Transformer Blocks
-    for _ in range(hp.Int('num_transformer_blocks', 1, 5)):
-        num_heads = hp.Choice('num_heads', values=[4, 8, 16])
-        key_dim = hp.Int('key_dim', min_value=32, max_value=128, step=32)
-        x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=key_dim)(x, x)
-        x = layers.LayerNormalization(epsilon=1e-6)(x)
-
-    # Flatten and Dense Layers
-    x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(hp.Int('dense_units', 64, 256, step=64), activation='relu', kernel_regularizer=l2(0.00))(x) # 添加 L2 正則化
-    x = keras.layers.Dropout(hp.Float('dropout', 0, 0.5, step=0.1))(x)
-    x = keras.layers.concatenate([x, process_inputs])  # 將製程參數與其他特徵串聯
-    outputs = keras.layers.Dense(1)(x)
-
-    model = keras.Model(inputs=[image_inputs, process_inputs], outputs=outputs)
-    model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', 1e-3, 1e-2, sampling='log')),
+    # 建立模型
+    model = keras.Model(inputs=process_inputs, outputs=outputs)
+    
+    # 編譯模型
+    model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', min_value=1e-4, max_value=1e-2, sampling='log')),
                   loss='mean_squared_error', metrics=['mae'])
+
     return model
 
 
@@ -98,7 +94,7 @@ for freq in frequencies:
             label_groups.extend([labels] * image_layers)
             count += 1
         
-    labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組
+    labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組s
 
 
 #################################################################################
@@ -133,35 +129,6 @@ for freq in frequencies:
     proc_dict_scaled[freq] = scaler.fit_transform(proc_dict[freq])
 
 
-#################################################################################
-#################################### 積層影像 ####################################
-#################################################################################
-
-# 載入圖像數據
-image_groups = []
-
-for group in range(group_start, group_end + 1):
-    group_images = []
-    for image_num in range(piece_num_start, piece_num_end + 1):
-        folder_name = f'circle(340x344)/trail{group:01d}_{image_num:02d}'
-        folder_path = f'data/{folder_name}/'
-
-        image_group = []
-        for i in range(image_layers):
-            filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
-            image = cv2.imread(filename)
-            image = cv2.resize(image, (image_width, image_height))
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            image = image / 255.0  # 標準化
-            image_group.append(image)
-
-        group_images.extend(image_group)
-
-    image_groups.extend(group_images)
-
-# 轉換為NumPy數組
-images = np.array(image_groups)
-
 
 #################################################################################
 #################################### 測試模型 ####################################
@@ -172,7 +139,7 @@ for freq in frequencies:
     for fold in range(1, k_fold_splits + 1):
         print(f"Testing on fold {fold}/{k_fold_splits} for frequency {freq}")
         # 定義訓練集和驗證集
-        x_val, y_val, proc_val = [], [], []
+        y_val, proc_val = [], []
 
         for group in range(group_start, group_end + 1):
             for image_num in range(piece_num_start, piece_num_end + 1):
@@ -181,40 +148,34 @@ for freq in frequencies:
 
                 # K-折交叉驗證
                 if image_num == fold:
-                    x_val.extend(images[index:index + image_layers])
                     y_val.extend(labels_dict[freq][index:index + image_layers])
                     proc_val.extend(proc_dict_scaled[freq][index:index + image_layers])
 
         # 轉換為 NumPy 數組
-        x_val = np.array(x_val)
         y_val = np.array(y_val)
         proc_val = np.array(proc_val)
 
         # 設置貝葉斯優化
         tuner = kt.BayesianOptimization(
-            build_model,
+            build_simple_model,
             objective='val_mae',
             max_trials=max_trials,
             num_initial_points=2,
-            directory='my_dir/Images & Parameters/',
-            project_name=f'bayesian_opt_conv_transformer_par_{freq}_fold_{fold}'
+            directory='my_dir/Parameters/',
+            project_name=f'bayesian_opt_par_{freq}_fold_{fold}'
         )
-        
-        # 獲取當前頻率的標簽
-        # current_labels = labels_dict[freq]
-        # current_proc = proc_dict[freq]
 
         # 重新加載最佳超參數
-        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0] # num_trials=1 表示只獲取一組最佳參數，而索引 [0] 表示從可能的最佳參數列表中獲取第一組。
 
         # 構建模型
-        model = build_model(best_hps)
+        model = build_simple_model(best_hps)
 
         # 載入模型權重
-        model.load_weights(f'Weight/Images & Parameters/bayesian_conv_transformer_par_model_weights_{freq}_fold_{fold}.h5')
+        model.load_weights(f'Weight/Parameters/bayesian_par_model_weights_{freq}_fold_{fold}.h5')
 
         # 進行預測
-        predictions = model.predict([x_val, proc_val])
+        predictions = model.predict(proc_val)
 
         # 計算 R^2 值
         r2 = r2_score(y_val, predictions.flatten())
@@ -231,12 +192,10 @@ for freq in frequencies:
 
         # 將預測值和實際值繪製成點圖（R^2圖）
         plt.scatter(y_val, predictions.flatten())
-        plt.title(f'R^2 - {freq} - Fold {fold}')
+        plt.title(f'R^2 OnlyPar- {freq} - Fold {fold}')
         plt.xlabel('Actual Values')
         plt.ylabel('Predicted Values')
-        # plt.text(0.0, 0.0,f'R^2: {r2:.3f}\nMSE: {mse:.3f}\nMAE: {mae:.3f}', 
-        #          ha='left', va='center', transform=plt.gca().transAxes)
-        plt.savefig(f'Plots/Images & Parameters/R^2_par_{freq}_fold_{fold}.png')  # 儲存圖片
+        plt.savefig(f'Plots/Parameters/R^2_OnlyPar_{freq}_fold_{fold}.png')  # 儲存圖片
         plt.show()
 
         # 預測值與實際值分成兩條線顯示(實際與預測畫在一起)
@@ -250,9 +209,9 @@ for freq in frequencies:
         # 添加標籤和標題
         plt.xlabel('Image Number')
         plt.ylabel('Values')
-        plt.title(f'Actual vs Predicted - {freq} - Fold {fold}')
+        plt.title(f'Actual vs Predicted OnlyPar - {freq} - Fold {fold}')
         plt.legend()  # 顯示圖例
-        plt.savefig(f'Plots/Images & Parameters/Actual_vs_Predicted_par_{freq}_fold_{fold}.png')  # 儲存圖片
+        plt.savefig(f'Plots/Parameters/Actual_vs_Predicted_OnlyPar_{freq}_fold_{fold}.png')  # 儲存圖片
         plt.show()
 
 # 列印模型簡報
