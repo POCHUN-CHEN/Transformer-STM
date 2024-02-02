@@ -39,7 +39,7 @@ num_channels = 1
 batch_size = 8
 
 # 設置 epoch 數目
-train_epochs = 500
+train_epochs = 1000
 
 # 設置貝葉斯優化 epoch 數目
 max_trials=20
