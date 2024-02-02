@@ -134,7 +134,7 @@ image_groups = []
 for group in range(group_start, group_end + 1):
     group_images = []
     for image_num in range(piece_num_start, piece_num_end + 1):
-        folder_name = f'circle(340x344)/trail{group:01d}_{image_num:02d}'
+        folder_name = f'circle(340x345)/trail{group:01d}_{image_num:02d}'
         folder_path = f'data/{folder_name}/'
 
         image_group = []

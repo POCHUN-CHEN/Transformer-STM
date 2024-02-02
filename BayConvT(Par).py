@@ -39,13 +39,13 @@ num_channels = 1
 batch_size = 8
 
 # 設置 epoch 數目
-train_epochs = 1000
+train_epochs = 500
 
 # 設置貝葉斯優化 epoch 數目
 max_trials=20
 trials_epochs=10
 
-k_fold_splits = 5
+k_fold_splits = 1
 
 # 讀取Excel文件中的標簽數據
 excel_data = pd.read_excel('Circle_test.xlsx')
@@ -164,7 +164,7 @@ image_groups = []
 for group in range(group_start, group_end + 1):
     group_images = []
     for image_num in range(piece_num_start, piece_num_end + 1):
-        folder_name = f'circle(340x344)/trail{group:01d}_{image_num:02d}'
+        folder_name = f'circle(340x345)/trail{group:01d}_{image_num:02d}'
         folder_path = f'data/{folder_name}/'
 
         image_group = []

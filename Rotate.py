@@ -37,7 +37,7 @@ if __name__ == "__main__":
         for group in range(1, 11):
             for image_num in range(1, 5):
                 folder_name = f'trail{group:01d}_{image_num:02d}'
-                folder_path = os.path.join(input_folder, f'circle(340x344)/{folder_name}')
+                folder_path = os.path.join(input_folder, f'circle(340x345)/{folder_name}')
 
                 for i in range(200):
                     filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
