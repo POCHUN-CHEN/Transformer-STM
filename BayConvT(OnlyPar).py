@@ -17,8 +17,8 @@ from tensorflow.keras.callbacks import EarlyStopping
 frequencies = ['50HZ_μa']
 
 # 定義範圍
-group_start = 1
-group_end = 10
+group_start = 11
+group_end = 20
 piece_num_start = 1
 piece_num_end = 5
 
@@ -40,7 +40,7 @@ train_epochs = 500
 max_trials=20
 trials_epochs=10
 
-k_fold_splits = 5
+k_fold_splits = 1
 
 # 讀取Excel文件中的標簽數據
 excel_data = pd.read_excel('Circle_test.xlsx')
@@ -116,7 +116,7 @@ labels_dict = {}
 for freq in frequencies:
     label_groups = []
     count = 0
-    for i in range(group_start, group_end + 1):
+    for i in range(1, group_end + 1):
         for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
             labels = excel_data.loc[count, freq]
             label_groups.extend([labels] * image_layers)
@@ -135,7 +135,7 @@ proc_dict = {}  # 儲存所有頻率全部大組製程參數
 proc_dict_scaled = {}
 for freq in frequencies:
     proc_groups = []  # 儲存全部大組製程參數
-    for i in range(group_start, group_end + 1):
+    for i in range(1, group_end + 1):
         group_procs = []  # 每大組的製程參數
         parameters_group = []
         for para in Process_parameters:

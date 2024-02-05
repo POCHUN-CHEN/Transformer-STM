@@ -18,12 +18,12 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 # 提取不同頻率
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-# frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
-frequencies = ['50HZ_μa']
+frequencies = ['200HZ_μa', '400HZ_μa', '800HZ_μa']
+# frequencies = ['50HZ_μa']
 
 # 定義範圍
-group_start = 1
-group_end = 10
+group_start = 11
+group_end = 20
 piece_num_start = 1
 piece_num_end = 5
 
@@ -113,13 +113,14 @@ labels_dict = {}
 for freq in frequencies:
     label_groups = []
     count = 0
-    for i in range(group_start, group_end + 1):
+    for i in range(1, group_end + 1):
         for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
             labels = excel_data.loc[count, freq]
             label_groups.extend([labels] * image_layers)
             count += 1
         
     labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組
+# print(labels_dict[freq])
 
 
 #################################################################################
@@ -132,7 +133,7 @@ proc_dict = {}  # 儲存所有頻率全部大組製程參數
 proc_dict_scaled = {}
 for freq in frequencies:
     proc_groups = []  # 儲存全部大組製程參數
-    for i in range(group_start, group_end + 1):
+    for i in range(1, group_end + 1):
         group_procs = []  # 每大組的製程參數
         parameters_group = []
         for para in Process_parameters:
@@ -152,6 +153,7 @@ for freq in frequencies:
     
     # 標準化製程參數
     proc_dict_scaled[freq] = scaler.fit_transform(proc_dict[freq])
+# print(proc_dict_scaled[freq])
 
 
 #################################################################################
@@ -166,6 +168,7 @@ for group in range(group_start, group_end + 1):
     for image_num in range(piece_num_start, piece_num_end + 1):
         folder_name = f'circle(340x345)/trail{group:01d}_{image_num:02d}'
         folder_path = f'data/{folder_name}/'
+        # print(folder_path)
 
         image_group = []
         for i in range(image_layers):
@@ -199,16 +202,17 @@ for freq in frequencies:
         for group in range(group_start, group_end + 1):
             for image_num in range(piece_num_start, piece_num_end + 1):
                 # 計算在 labels_dict 和 proc_dict 中的索引
-                index = (group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers
+                images_index = ((group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers)%((group_end + 1 - group_start) * (piece_num_end + 1 - piece_num_start) * image_layers)
+                index = ((group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers)
 
                 # K-折交叉驗證
                 if image_num == fold:
-                    x_val.extend(images[index:index + image_layers])
-                    y_val.extend(labels_dict[freq][index:index + image_layers])
+                    x_val.extend(images[images_index:images_index + image_layers])
+                    y_val.extend(labels_dict[freq][index:(index + image_layers)])
                     proc_val.extend(proc_dict_scaled[freq][index:index + image_layers])
 
                 else:
-                    x_train.extend(images[index:index + image_layers])
+                    x_train.extend(images[images_index:images_index + image_layers])
                     y_train.extend(labels_dict[freq][index:index + image_layers])
                     proc_train.extend(proc_dict_scaled[freq][index:index + image_layers])
 
@@ -318,12 +322,10 @@ for freq in frequencies:
         records = pd.concat([records, current_records], ignore_index=True)
 
         # 將 DataFrame 寫入 Excel 檔案
-        # records.to_excel(f'Records/bayesian_conv_transformer_par_records_{freq}.xlsx', index=False)
         records.to_excel(f'Records/Images & Parameters/bayesian_conv_transformer_par_records_{freq}_fold_{fold}.xlsx', index=False)
 
         # 清除先前的訓練記錄
         records = records.iloc[0:0]  # 刪除所有行，得到一個空的 DataFrame
 
         # 保存模型權重
-        # model.save_weights(f'Weight/bayesian_conv_transformer_par_model_weights_{freq}.h5')
         model.save_weights(f'Weight/Images & Parameters/bayesian_conv_transformer_par_model_weights_{freq}_fold_{fold}.h5')

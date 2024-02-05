@@ -4,12 +4,13 @@ from tensorflow.keras import layers
 import numpy as np
 import pandas as pd
 import cv2
-from sklearn.model_selection import KFold
 import keras_tuner as kt
 
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.regularizers import l1
+from sklearn.preprocessing import StandardScaler # 標準化製程參數
 from tensorflow.keras.regularizers import l2
+
+from tensorflow.keras.callbacks import TensorBoard
+from tensorflow.keras.callbacks import EarlyStopping
 
 # 提取不同頻率
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
@@ -30,8 +31,11 @@ image_height = 128
 image_width = 128
 num_channels = 1
 
+# 批次大小
+batch_size = 8
+
 # 設置 epoch 數目
-train_epochs = 1200
+train_epochs = 1000
 
 # 設置貝葉斯優化 epoch 數目
 max_trials=20
@@ -45,6 +49,18 @@ excel_process = pd.read_excel('Process_parameters.xlsx')
 
 
 ################################################################################
+##################################### 定義 #####################################
+################################################################################
+
+# 定義學習率調整函數
+def lr_scheduler(epoch, lr):
+    # 每 100 個 epochs 學習率下降為原來的十分之一
+    if epoch > 0 and epoch % 50 == 0:
+        return lr * 0.8
+    return lr
+
+
+################################################################################
 ################################## 工件材料性質 ##################################
 ################################################################################
 
@@ -53,7 +69,7 @@ labels_dict = {}
 for freq in frequencies:
     label_groups = []
     count = 0
-    for i in range(group_start, group_end + 1):
+    for i in range(1, group_end + 1):
         for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
             labels = excel_data.loc[count, freq]
             label_groups.extend([labels] * image_layers)
@@ -69,9 +85,10 @@ for freq in frequencies:
 # 載入製程參數
 Process_parameters = ['氧濃度', '雷射掃描速度', '雷射功率', '線間距', '能量密度']
 proc_dict = {}  # 儲存所有頻率全部大組製程參數
+proc_dict_scaled = {}
 for freq in frequencies:
     proc_groups = []  # 儲存全部大組製程參數
-    for i in range(group_start, group_end + 1):
+    for i in range(1, group_end + 1):
         group_procs = []  # 每大組的製程參數
         parameters_group = []
         for para in Process_parameters:
@@ -85,6 +102,12 @@ for freq in frequencies:
 
     # 轉換為NumPy數組     
     proc_dict[freq] = np.array(proc_groups)
+
+    # 初始化 StandardScaler
+    scaler = StandardScaler()
+    
+    # 標準化製程參數
+    proc_dict_scaled[freq] = scaler.fit_transform(proc_dict[freq])
 
 
 #################################################################################
@@ -120,9 +143,6 @@ images = np.array(image_groups)
 #################################################################################
 #################################### 測試模型 ####################################
 #################################################################################
-
-# K-折交叉驗證
-kf = KFold(n_splits=k_fold_splits)
 
 # 使用 TensorFlow 的 MirroredStrategy 進行分布式訓練
 strategy = tf.distribute.MirroredStrategy()
@@ -165,29 +185,48 @@ with strategy.scope():
 
     # 對於每個頻率進行模型訓練和保存
     for freq in frequencies:
-        # 獲取當前頻率的標簽
-        current_labels = labels_dict[freq]
-        current_proc = proc_dict[freq]
+        for fold in range(1, k_fold_splits + 1):
+            print(f"Training on fold {fold}/{k_fold_splits} for frequency {freq}")
 
-        for fold, (train_index, val_index) in enumerate(kf.split(images)):
-            print(f"Training on fold {fold+1}/{k_fold_splits} for frequency {freq}")
+            # 定義訓練集和驗證集
+            x_train, y_train, proc_train = [], [], []
+            x_val, y_val, proc_val = [], [], []
 
-            # 分割數據集
-            x_train, x_val = images[train_index], images[val_index]
-            y_train, y_val = current_labels[train_index], current_labels[val_index]
-            proc_train, proc_val = current_proc[train_index], current_proc[val_index]
+            for group in range(group_start, group_end + 1):
+                for image_num in range(piece_num_start, piece_num_end + 1):
+                    # 計算在 labels_dict 和 proc_dict 中的索引
+                    images_index = ((group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers)%((group_end + 1 - group_start) * (piece_num_end + 1 - piece_num_start) * image_layers)
+                    index = ((group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers)
+
+                    # K-折交叉驗證
+                    if image_num == fold:
+                        x_val.extend(images[images_index:images_index + image_layers])
+                        y_val.extend(labels_dict[freq][index:(index + image_layers)])
+                        proc_val.extend(proc_dict_scaled[freq][index:index + image_layers])
+
+                    else:
+                        x_train.extend(images[images_index:images_index + image_layers])
+                        y_train.extend(labels_dict[freq][index:index + image_layers])
+                        proc_train.extend(proc_dict_scaled[freq][index:index + image_layers])
+
+            # 轉換為 NumPy 數組
+            x_train = np.array(x_train)
+            y_train = np.array(y_train)
+            proc_train = np.array(proc_train)
+            x_val = np.array(x_val)
+            y_val = np.array(y_val)
+            proc_val = np.array(proc_val)
 
             # 設置貝葉斯優化
             tuner = kt.BayesianOptimization(
                 build_model,
                 objective='val_mae',
                 max_trials=max_trials,
-                directory='my_dir',
-                project_name=f'bayesian_opt_conv_transformer_par_{freq}_fold_{fold+1}'
+                directory='my_dir/Images & Parameters(Muti)/',
+                project_name=f'bayesian_opt_conv_transformer_par_{freq}_fold_{fold}'
             )
 
             # 數據生成器
-            batch_size = 8
             train_data_generator = tf.data.Dataset.from_tensor_slices(((x_train, proc_train), y_train)).batch(batch_size)
             val_data_generator = tf.data.Dataset.from_tensor_slices(((x_val, proc_val), y_val)).batch(batch_size)
 
@@ -195,16 +234,23 @@ with strategy.scope():
             tuner.search(train_data_generator, epochs=trials_epochs, validation_data=val_data_generator)
 
             # 獲取最佳超參數並創建模型
-            best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+            best_hps = tuner.get_best_hyperparameters(num_trials=1)[0] # num_trials=1 表示只獲取一組最佳參數，而索引 [0] 表示從可能的最佳參數列表中獲取第一組。
 
             # 早期停止功能
-            early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=10, verbose=1)
+            # early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=10, verbose=1)
+
+            # 學習率調整
+            lr_callback = tf.keras.callbacks.LearningRateScheduler(lr_scheduler)
+
+            # 創建 TensorBoard 回調
+            tensorboard_callback = TensorBoard(log_dir='logs', histogram_freq=1)
 
             # 使用最佳超參數創建模型
             model = build_model(best_hps)
             print(f'Frequency: {freq}')
-            model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[early_stopping])
-           
+            # model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[early_stopping, tensorboard_callback, lr_callback])
+            model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[tensorboard_callback, lr_callback])
+
             # 初始化 DataFrame 以存儲記錄（抓取訓練過程的趨勢資料）
             records = pd.DataFrame()
             
@@ -222,11 +268,11 @@ with strategy.scope():
 
             # 將 DataFrame 寫入 Excel 檔案
             # records.to_excel(f'Records/bayesian_conv_transformer_par_records_{freq}.xlsx', index=False)
-            records.to_excel(f'Records/bayesian_conv_transformer_par_model_weights_{freq}_fold_{fold+1}.xlsx', index=False)
+            records.to_excel(f'Records/Images & Parameters(Muti)/bayesian_conv_transformer_par_model_weights_{freq}_fold_{fold}.xlsx', index=False)
 
             # 清除先前的訓練記錄
             records = records.iloc[0:0]  # 刪除所有行，得到一個空的 DataFrame
 
             # 保存模型權重
             # model.save_weights(f'Weight/bayesian_conv_transformer_par_model_weights_{freq}.h5')
-            model.save_weights(f'Weight/bayesian_conv_transformer_par_model_weights_{freq}_fold_{fold+1}.h5')
+            model.save_weights(f'Weight/Images & Parameters(Muti)/bayesian_conv_transformer_par_model_weights_{freq}_fold_{fold}.h5')

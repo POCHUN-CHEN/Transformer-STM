@@ -20,8 +20,8 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 frequencies = ['50HZ_μa']
 
 # 定義範圍
-group_start = 1
-group_end = 10
+group_start = 11
+group_end = 20
 piece_num_start = 1
 piece_num_end = 5
 
@@ -92,13 +92,14 @@ labels_dict = {}
 for freq in frequencies:
     label_groups = []
     count = 0
-    for i in range(group_start, group_end + 1):
+    for i in range(1, group_end + 1):
         for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
             labels = excel_data.loc[count, freq]
             label_groups.extend([labels] * image_layers)
             count += 1
         
     labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組
+# print(labels_dict[freq])
 
 
 #################################################################################
@@ -111,7 +112,7 @@ proc_dict = {}  # 儲存所有頻率全部大組製程參數
 proc_dict_scaled = {}
 for freq in frequencies:
     proc_groups = []  # 儲存全部大組製程參數
-    for i in range(group_start, group_end + 1):
+    for i in range(1, group_end + 1):
         group_procs = []  # 每大組的製程參數
         parameters_group = []
         for para in Process_parameters:
@@ -131,6 +132,7 @@ for freq in frequencies:
     
     # 標準化製程參數
     proc_dict_scaled[freq] = scaler.fit_transform(proc_dict[freq])
+# print(proc_dict_scaled[freq])
 
 
 #################################################################################
@@ -177,11 +179,12 @@ for freq in frequencies:
         for group in range(group_start, group_end + 1):
             for image_num in range(piece_num_start, piece_num_end + 1):
                 # 計算在 labels_dict 和 proc_dict 中的索引
+                images_index = ((group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers)%((group_end + 1 - group_start) * (piece_num_end + 1 - piece_num_start) * image_layers)
                 index = (group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers
 
                 # K-折交叉驗證
                 if image_num == fold:
-                    x_val.extend(images[index:index + image_layers])
+                    x_val.extend(images[images_index:images_index + image_layers])
                     y_val.extend(labels_dict[freq][index:index + image_layers])
                     proc_val.extend(proc_dict_scaled[freq][index:index + image_layers])
 
@@ -199,10 +202,6 @@ for freq in frequencies:
             directory='my_dir/Images & Parameters/',
             project_name=f'bayesian_opt_conv_transformer_par_{freq}_fold_{fold}'
         )
-        
-        # 獲取當前頻率的標簽
-        # current_labels = labels_dict[freq]
-        # current_proc = proc_dict[freq]
 
         # 重新加載最佳超參數
         best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]

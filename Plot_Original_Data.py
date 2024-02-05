@@ -5,13 +5,13 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler # 標準化製程參數
 
 # 提取不同頻率
-# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 # frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
-frequencies = ['50HZ_μa']
+# frequencies = ['50HZ_μa']
 
 # 定義範圍
 group_start = 1
-group_end = 10
+group_end = 40
 piece_num_start = 1
 piece_num_end = 5
 

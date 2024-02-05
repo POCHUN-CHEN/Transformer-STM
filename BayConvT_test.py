@@ -19,8 +19,8 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 frequencies = ['50HZ_μa']
 
 # 定義範圍
-group_start = 1
-group_end = 10
+group_start = 11
+group_end = 20
 piece_num_start = 1
 piece_num_end = 5
 
@@ -35,7 +35,7 @@ num_channels = 1
 # 設置貝葉斯優化 epoch 數目
 max_trials=20
 
-k_fold_splits = 5
+k_fold_splits = 1
 
 # 讀取Excel文件中的標簽數據
 excel_data = pd.read_excel('Circle_test.xlsx')
@@ -88,7 +88,7 @@ labels_dict = {}
 for freq in frequencies:
     label_groups = []
     count = 0
-    for i in range(group_start, group_end + 1):
+    for i in range(1, group_end + 1):
         for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
             labels = excel_data.loc[count, freq]
             label_groups.extend([labels] * image_layers)
@@ -141,11 +141,12 @@ for freq in frequencies:
         for group in range(group_start, group_end + 1):
             for image_num in range(piece_num_start, piece_num_end + 1):
                 # 計算在 labels_dict 和 proc_dict 中的索引
+                images_index = ((group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers)%((group_end + 1 - group_start) * (piece_num_end + 1 - piece_num_start) * image_layers)
                 index = (group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers
 
                 # K-折交叉驗證
                 if image_num == fold:
-                    x_val.extend(images[index:index + image_layers])
+                    x_val.extend(images[images_index:images_index + image_layers])
                     y_val.extend(labels_dict[freq][index:index + image_layers])
 
         # 轉換為 NumPy 數組
