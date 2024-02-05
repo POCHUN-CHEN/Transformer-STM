@@ -12,142 +12,60 @@ from tensorflow.keras.regularizers import l2
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.callbacks import EarlyStopping
 
-# 提取不同頻率
-# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-# frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
-frequencies = ['50HZ_μa']
 
-# 定義範圍
-group_start = 1
-group_end = 40
-piece_num_start = 1
-piece_num_end = 5
-
-# 定義其他相關範圍或常數
-image_layers = 200  # 每顆影像的層數
-
-# 定義圖像的高度、寬度和通道數
-image_height = 128
-image_width = 128
-num_channels = 1
-
-# 批次大小
-batch_size = 8
-
-# 設置 epoch 數目
-train_epochs = 1000
-
-# 設置貝葉斯優化 epoch 數目
-max_trials=20
-trials_epochs=10
-
-k_fold_splits = 5
-
-# 讀取Excel文件中的標簽數據
-excel_data = pd.read_excel('Circle_test.xlsx')
-excel_process = pd.read_excel('Process_parameters.xlsx')
-
-
-################################################################################
-##################################### 定義 #####################################
-################################################################################
-
-# 定義學習率調整函數
-def lr_scheduler(epoch, lr):
-    # 每 100 個 epochs 學習率下降為原來的十分之一
-    if epoch > 0 and epoch % 50 == 0:
-        return lr * 0.8
-    return lr
-
-
-################################################################################
-################################## 工件材料性質 ##################################
-################################################################################
-
-# 載入材料數據標簽
-labels_dict = {}
-for freq in frequencies:
-    label_groups = []
-    count = 0
-    for i in range(1, group_end + 1):
-        for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
-            labels = excel_data.loc[count, freq]
-            label_groups.extend([labels] * image_layers)
-            count += 1
-        
-    labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組
-
-
-#################################################################################
-#################################### 製程參數 ####################################
-#################################################################################
-
-# 載入製程參數
-Process_parameters = ['氧濃度', '雷射掃描速度', '雷射功率', '線間距', '能量密度']
-proc_dict = {}  # 儲存所有頻率全部大組製程參數
-proc_dict_scaled = {}
-for freq in frequencies:
-    proc_groups = []  # 儲存全部大組製程參數
-    for i in range(1, group_end + 1):
-        group_procs = []  # 每大組的製程參數
-        parameters_group = []
-        for para in Process_parameters:
-            parameters = excel_process.loc[i-1, para]
-            parameters_group.append(parameters)
-
-        for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
-            group_procs.extend([parameters_group] * image_layers)
-
-        proc_groups.extend(group_procs)
-
-    # 轉換為NumPy數組     
-    proc_dict[freq] = np.array(proc_groups)
-
-    # 初始化 StandardScaler
-    scaler = StandardScaler()
-    
-    # 標準化製程參數
-    proc_dict_scaled[freq] = scaler.fit_transform(proc_dict[freq])
-
-
-#################################################################################
-#################################### 積層影像 ####################################
-#################################################################################
-
-# 載入圖像數據
-image_groups = []
-
-for group in range(group_start, group_end + 1):
-    group_images = []
-    for image_num in range(piece_num_start, piece_num_end + 1):
-        folder_name = f'circle(340x345)/trail{group:01d}_{image_num:02d}'
-        folder_path = f'data/{folder_name}/'
-
-        image_group = []
-        for i in range(image_layers):
-            filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
-            image = cv2.imread(filename)
-            image = cv2.resize(image, (image_width, image_height))
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            image = image / 255.0  # 標準化
-            image_group.append(image)
-
-        group_images.extend(image_group)
-
-    image_groups.extend(group_images)
-
-# 轉換為NumPy數組
-images = np.array(image_groups)
-
-
-#################################################################################
-#################################### 測試模型 ####################################
-#################################################################################
-
-# 使用 TensorFlow 的 MirroredStrategy 進行分布式訓練
+# 使用 TensorFlow 的 MirroredStrategy 進行分布式訓練W
 strategy = tf.distribute.MirroredStrategy()
 
 with strategy.scope():
+    # 動態記憶體分配
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+        except RuntimeError as e:
+            print(e)
+
+    # 提取不同頻率
+    # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+    # frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
+    frequencies = ['50HZ_μa']
+
+    # 定義範圍
+    group_start = 1
+    group_end = 40
+    piece_num_start = 1
+    piece_num_end = 5
+
+    # 定義其他相關範圍或常數
+    image_layers = 200  # 每顆影像的層數
+
+    # 定義圖像的高度、寬度和通道數
+    image_height = 128
+    image_width = 128
+    num_channels = 1
+
+    # 批次大小
+    batch_size = 8
+
+    # 設置 epoch 數目
+    train_epochs = 1000
+
+    # 設置貝葉斯優化 epoch 數目
+    max_trials=20
+    trials_epochs=10
+
+    k_fold_splits = 5
+
+    # 讀取Excel文件中的標簽數據
+    excel_data = pd.read_excel('Circle_test.xlsx')
+    excel_process = pd.read_excel('Process_parameters.xlsx')
+
+
+    ################################################################################
+    ##################################### 定義 #####################################
+    ################################################################################
+
     # 定義Convolution Transformer模型建構函數
     def build_model(hp):
         image_inputs = keras.Input(shape=(image_height, image_width, num_channels))
@@ -179,9 +97,101 @@ with strategy.scope():
         outputs = keras.layers.Dense(1)(x)
 
         model = keras.Model(inputs=[image_inputs, process_inputs], outputs=outputs)
-        model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', 1e-4, 1e-2, sampling='log')),
+        model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', 1e-3, 1e-2, sampling='log')),
                     loss='mean_squared_error', metrics=['mae'])
         return model
+
+    # 定義學習率調整函數
+    def lr_scheduler(epoch, lr):
+        # 每 100 個 epochs 學習率下降為原來的十分之一
+        if epoch > 0 and epoch % 100 == 0:
+            return lr * 0.8
+        return lr
+
+
+    ################################################################################
+    ################################## 工件材料性質 ##################################
+    ################################################################################
+
+    # 載入材料數據標簽
+    labels_dict = {}
+    for freq in frequencies:
+        label_groups = []
+        count = 0
+        for i in range(1, group_end + 1):
+            for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
+                labels = excel_data.loc[count, freq]
+                label_groups.extend([labels] * image_layers)
+                count += 1
+            
+        labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組
+
+
+    #################################################################################
+    #################################### 製程參數 ####################################
+    #################################################################################
+
+    # 載入製程參數
+    Process_parameters = ['氧濃度', '雷射掃描速度', '雷射功率', '線間距', '能量密度']
+    proc_dict = {}  # 儲存所有頻率全部大組製程參數
+    proc_dict_scaled = {}
+    for freq in frequencies:
+        proc_groups = []  # 儲存全部大組製程參數
+        for i in range(1, group_end + 1):
+            group_procs = []  # 每大組的製程參數
+            parameters_group = []
+            for para in Process_parameters:
+                parameters = excel_process.loc[i-1, para]
+                parameters_group.append(parameters)
+
+            for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
+                group_procs.extend([parameters_group] * image_layers)
+
+            proc_groups.extend(group_procs)
+
+        # 轉換為NumPy數組     
+        proc_dict[freq] = np.array(proc_groups)
+
+        # 初始化 StandardScaler
+        scaler = StandardScaler()
+        
+        # 標準化製程參數
+        proc_dict_scaled[freq] = scaler.fit_transform(proc_dict[freq])
+
+
+    #################################################################################
+    #################################### 積層影像 ####################################
+    #################################################################################
+
+    # 載入圖像數據
+    image_groups = []
+
+    for group in range(group_start, group_end + 1):
+        group_images = []
+        for image_num in range(piece_num_start, piece_num_end + 1):
+            folder_name = f'circle(340x345)/trail{group:01d}_{image_num:02d}'
+            folder_path = f'data/{folder_name}/'
+
+            image_group = []
+            for i in range(image_layers):
+                filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
+                image = cv2.imread(filename)
+                image = cv2.resize(image, (image_width, image_height))
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                image = image / 255.0  # 標準化
+                image_group.append(image)
+
+            group_images.extend(image_group)
+
+        image_groups.extend(group_images)
+
+    # 轉換為NumPy數組
+    images = np.array(image_groups)
+
+
+    #################################################################################
+    #################################### 測試模型 ####################################
+    #################################################################################
 
     # 對於每個頻率進行模型訓練和保存
     for freq in frequencies:
@@ -227,8 +237,10 @@ with strategy.scope():
             )
 
             # 數據生成器
-            train_data_generator = tf.data.Dataset.from_tensor_slices(((x_train, proc_train), y_train)).batch(batch_size)
-            val_data_generator = tf.data.Dataset.from_tensor_slices(((x_val, proc_val), y_val)).batch(batch_size)
+            # train_data_generator = tf.data.Dataset.from_tensor_slices(((x_train, proc_train), y_train)).batch(batch_size)
+            # val_data_generator = tf.data.Dataset.from_tensor_slices(((x_val, proc_val), y_val)).batch(batch_size)
+            train_data_generator = tf.data.Dataset.from_tensor_slices(((x_train, proc_train), y_train)).batch(batch_size).prefetch(tf.data.experimental.AUTOTUNE)
+            val_data_generator = tf.data.Dataset.from_tensor_slices(((x_val, proc_val), y_val)).batch(batch_size).prefetch(tf.data.experimental.AUTOTUNE)
 
             # 開始搜索
             tuner.search(train_data_generator, epochs=trials_epochs, validation_data=val_data_generator)
