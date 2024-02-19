@@ -16,8 +16,8 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 # 提取不同頻率
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-# frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
-frequencies = ['50HZ_μa']
+frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
+# frequencies = ['50HZ_μa']
 
 # 定義範圍
 group_start = 11
@@ -33,6 +33,9 @@ image_height = 128
 image_width = 128
 num_channels = 1
 
+proc_features_dim = 5  # 假設制程參數維度為5
+num_classes = 1  # 回歸任務
+
 # 設置貝葉斯優化 epoch 數目
 max_trials=20
 
@@ -47,39 +50,93 @@ excel_process = pd.read_excel('Process_parameters.xlsx')
 ##################################### 定義 #####################################
 ################################################################################
 
-# 定義Convolution Transformer模型建構函數
-def build_model(hp):
-    image_inputs = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32') # 更改數值精度
-    process_inputs = keras.Input(shape=(proc_dict[freq].shape[1],), dtype='float32')
+# # 定義Convolution Transformer模型建構函數
+# def build_model(hp):
+#     image_inputs = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32') # 更改數值精度
+#     process_inputs = keras.Input(shape=(proc_dict[freq].shape[1],), dtype='float32')
 
-    # Convolutional Blocks
-    x = keras.layers.Conv2D(hp.Int('conv_1_filter', min_value=32, max_value=128, step=32), 
-                            (3, 3), activation='relu', kernel_regularizer=l2(0.00))(image_inputs) # 添加 L2 正則化
-    x = keras.layers.MaxPooling2D((2, 2))(x)
-    x = keras.layers.Conv2D(hp.Int('conv_2_filter', min_value=64, max_value=256, step=64), 
-                            (3, 3), activation='relu')(x)
-    x = keras.layers.MaxPooling2D((2, 2))(x)
-    x = keras.layers.Conv2D(hp.Int('conv_3_filter', min_value=128, max_value=512, step=128), 
-                            (3, 3), activation='relu')(x)
-    x = keras.layers.MaxPooling2D((2, 2))(x)
+#     # Convolutional Blocks
+#     x = keras.layers.Conv2D(hp.Int('conv_1_filter', min_value=32, max_value=128, step=32), 
+#                             (3, 3), activation='relu', kernel_regularizer=l2(0.00))(image_inputs) # 添加 L2 正則化
+#     x = keras.layers.MaxPooling2D((2, 2))(x)
+#     x = keras.layers.Conv2D(hp.Int('conv_2_filter', min_value=64, max_value=256, step=64), 
+#                             (3, 3), activation='relu')(x)
+#     x = keras.layers.MaxPooling2D((2, 2))(x)
+#     x = keras.layers.Conv2D(hp.Int('conv_3_filter', min_value=128, max_value=512, step=128), 
+#                             (3, 3), activation='relu')(x)
+#     x = keras.layers.MaxPooling2D((2, 2))(x)
 
-    # Transformer Blocks
-    for _ in range(hp.Int('num_transformer_blocks', 1, 5)):
-        num_heads = hp.Choice('num_heads', values=[4, 8, 16])
-        key_dim = hp.Int('key_dim', min_value=32, max_value=128, step=32)
-        x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=key_dim)(x, x)
-        x = layers.LayerNormalization(epsilon=1e-6)(x)
+#     # Transformer Blocks
+#     for _ in range(hp.Int('num_transformer_blocks', 1, 5)):
+#         num_heads = hp.Choice('num_heads', values=[4, 8, 16])
+#         key_dim = hp.Int('key_dim', min_value=32, max_value=128, step=32)
+#         x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=key_dim)(x, x)
+#         x = layers.LayerNormalization(epsilon=1e-6)(x)
 
-    # Flatten and Dense Layers
-    x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(hp.Int('dense_units', 64, 256, step=64), activation='relu', kernel_regularizer=l2(0.00))(x) # 添加 L2 正則化
-    x = keras.layers.Dropout(hp.Float('dropout', 0, 0.5, step=0.1))(x)
-    x = keras.layers.concatenate([x, process_inputs])  # 將製程參數與其他特徵串聯
-    outputs = keras.layers.Dense(1)(x)
+#     # Flatten and Dense Layers
+#     x = keras.layers.Flatten()(x)
+#     x = keras.layers.Dense(hp.Int('dense_units', 64, 256, step=64), activation='relu', kernel_regularizer=l2(0.00))(x) # 添加 L2 正則化
+#     x = keras.layers.Dropout(hp.Float('dropout', 0, 0.5, step=0.1))(x)
+#     x = keras.layers.concatenate([x, process_inputs])  # 將製程參數與其他特徵串聯
+#     outputs = keras.layers.Dense(1)(x)
 
-    model = keras.Model(inputs=[image_inputs, process_inputs], outputs=outputs)
-    model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', 1e-3, 1e-2, sampling='log')),
-                  loss='mean_squared_error', metrics=['mae'])
+#     model = keras.Model(inputs=[image_inputs, process_inputs], outputs=outputs)
+#     model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', 1e-3, 1e-2, sampling='log')),
+#                   loss='mean_squared_error', metrics=['mae'])
+#     return model
+
+# 定義Convolution Block
+def ConvBlock(x, filters, kernel_size, strides):
+    x = layers.Conv2D(filters, kernel_size, strides=strides, padding='same', activation='relu')(x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    return x
+
+# 定義Transformer Block
+def TransformerBlock(x, embed_dim, num_heads, ff_dim):
+    x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)(x, x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    x = layers.Dense(ff_dim, activation="relu")(x)
+    x = layers.Dense(embed_dim)(x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    return x
+
+# 建立CvT模型的函數
+def build_cvt_model(image_height, image_width, num_channels, proc_features_dim, num_classes):
+    inputs_img = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32') # 更改數值精度
+    inputs_process = keras.Input(shape=(proc_dict[freq].shape[1],), dtype='float32')
+
+    # 根據PyTorch示例直接指定的超參數
+    # 假設有三個階段，每個階段的參數如下
+    stages_filters = [64, 128, 256]  # 每個階段的filters數量
+    stages_kernel_sizes = [7, 3, 3]  # 每個階段的kernel size
+    stages_strides = [4, 2, 2]  # 每個階段的strides
+    embed_dims = [64, 128, 256]  # 每個階段的embed_dim
+    num_heads = [1, 2, 4]  # 每個階段的num_heads
+    ff_dims = [128, 256, 512]  # 每個階段的ff_dim
+
+    x = inputs_img
+    for stage in range(3):  # 有三個階段
+        x = ConvBlock(x, stages_filters[stage], stages_kernel_sizes[stage], stages_strides[stage])
+        x = TransformerBlock(x, embed_dims[stage], num_heads[stage], ff_dims[stage])
+    
+    # 全局平均池化層
+    x = layers.GlobalAveragePooling2D()(x)
+
+    # 處理制程參數路徑
+    y = layers.Dense(64, activation="relu")(inputs_process)  # 假設制程參數的Dense層為64個單元
+
+    # 合並圖像和制程參數的路徑
+    combined = layers.concatenate([x, y])
+
+    # 回歸輸出層
+    outputs = layers.Dense(num_classes, activation="linear")(combined)
+
+    # 建立和編譯模型
+    model = keras.Model(inputs=[inputs_img, inputs_process], outputs=outputs)
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),  # 根據需要調整學習率
+                  loss='mean_squared_error', 
+                  metrics=['mae'])
+
     return model
 
 
@@ -193,21 +250,22 @@ for freq in frequencies:
         y_val = np.array(y_val)
         proc_val = np.array(proc_val)
 
-        # 設置貝葉斯優化
-        tuner = kt.BayesianOptimization(
-            build_model,
-            objective='val_mae',
-            max_trials=max_trials,
-            num_initial_points=2,
-            directory='my_dir/Images & Parameters/',
-            project_name=f'bayesian_opt_conv_transformer_par_{freq}_fold_{fold}'
-        )
+        # # 設置貝葉斯優化
+        # tuner = kt.BayesianOptimization(
+        #     build_cvt_model,
+        #     objective='val_mae',
+        #     max_trials=max_trials,
+        #     num_initial_points=2,
+        #     directory='my_dir/Images & Parameters/',
+        #     project_name=f'bayesian_opt_conv_transformer_par_{freq}_fold_{fold}'
+        # )
 
         # 重新加載最佳超參數
-        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        # best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
 
         # 構建模型
-        model = build_model(best_hps)
+        # model = build_cvt_model(best_hps)
+        model = build_cvt_model(image_height, image_width, num_channels, proc_features_dim, num_classes)
 
         # 載入模型權重
         model.load_weights(f'Weight/Images & Parameters/bayesian_conv_transformer_par_model_weights_{freq}_fold_{fold}.h5')

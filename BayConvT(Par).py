@@ -16,14 +16,24 @@ from tensorflow.keras.callbacks import EarlyStopping
 
 # from sklearn.model_selection import train_test_split
 
+# 動態記憶體分配
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
+
 # 提取不同頻率
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-frequencies = ['200HZ_μa', '400HZ_μa', '800HZ_μa']
+# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_Br', '800HZ_Pcv']
+frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
 # frequencies = ['50HZ_μa']
 
 # 定義範圍
-group_start = 11
-group_end = 20
+group_start = 1
+group_end = 40
 piece_num_start = 1
 piece_num_end = 5
 
@@ -35,8 +45,11 @@ image_height = 128
 image_width = 128
 num_channels = 1
 
+proc_features_dim = 5  # 假設制程參數維度為5
+num_classes = 1  # 回歸任務
+
 # 批次大小
-batch_size = 8
+batch_size = 128
 
 # 設置 epoch 數目
 train_epochs = 1000
@@ -56,46 +69,154 @@ excel_process = pd.read_excel('Process_parameters.xlsx')
 ##################################### 定義 #####################################
 ################################################################################
 
-# 定義Convolution Transformer模型建構函數
-def build_model(hp):
-    image_inputs = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32') # 更改數值精度
-    process_inputs = keras.Input(shape=(proc_dict[freq].shape[1],), dtype='float32')
+# # 定義Convolution Block
+# def ConvBlock(hp, x, stage):
+#     filters = hp.Int(f'conv_{stage}_filters', min_value=32, max_value=512, step=32)
+#     kernel_size = hp.Choice(f'conv_{stage}_kernel_size', values=[3, 5, 7])
+#     strides = hp.Choice(f'conv_{stage}_strides', values=[1, 2, 4])
+    
+#     x = layers.Conv2D(filters, kernel_size, strides=strides, padding='same', activation='relu')(x)
+#     x = layers.LayerNormalization(epsilon=1e-6)(x)
+#     return x
 
-    # Convolutional Blocks
-    x = keras.layers.Conv2D(hp.Int('conv_1_filter', min_value=32, max_value=128, step=32), 
-                            (3, 3), activation='relu', kernel_regularizer=l2(0.00))(image_inputs) # 添加 L2 正則化
-    x = keras.layers.MaxPooling2D((2, 2))(x)
-    x = keras.layers.Conv2D(hp.Int('conv_2_filter', min_value=64, max_value=256, step=64), 
-                            (3, 3), activation='relu')(x)
-    x = keras.layers.MaxPooling2D((2, 2))(x)
-    x = keras.layers.Conv2D(hp.Int('conv_3_filter', min_value=128, max_value=512, step=128), 
-                            (3, 3), activation='relu')(x)
-    x = keras.layers.MaxPooling2D((2, 2))(x)
+# # 定義Transformer Block
+# def TransformerBlock(hp, x, stage):
+#     embed_dim = hp.Int(f'transformer_{stage}_embed_dim', min_value=32, max_value=512, step=32)
+#     num_heads = hp.Choice(f'transformer_{stage}_num_heads', values=[1, 2, 4, 8])
+#     ff_dim = hp.Int(f'transformer_{stage}_ff_dim', min_value=32, max_value=512, step=32)
+    
+#     x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)(x, x)
+#     x = layers.LayerNormalization(epsilon=1e-6)(x)
+#     x = layers.Dense(ff_dim, activation="relu")(x)
+#     x = layers.Dense(embed_dim)(x)
+#     x = layers.LayerNormalization(epsilon=1e-6)(x)
+#     return x
 
-    # Transformer Blocks
-    for _ in range(hp.Int('num_transformer_blocks', 1, 5)):
-        num_heads = hp.Choice('num_heads', values=[4, 8, 16])
-        key_dim = hp.Int('key_dim', min_value=32, max_value=128, step=32)
-        x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=key_dim)(x, x)
-        x = layers.LayerNormalization(epsilon=1e-6)(x)
+# # 定義Convolution Transformer模型建構函數
+# def build_cvt_model(hp):
+#     inputs_img = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32') # 更改數值精度
+#     inputs_process = keras.Input(shape=(proc_dict[freq].shape[1],), dtype='float32')
+#     num_classes = 1  # 回归任务的输出维度
 
-    # Flatten and Dense Layers
-    x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(hp.Int('dense_units', 64, 256, step=64), activation='relu', kernel_regularizer=l2(0.00))(x) # 添加 L2 正則化
-    x = keras.layers.Dropout(hp.Float('dropout', 0, 0.5, step=0.1))(x)
-    x = keras.layers.concatenate([x, process_inputs])  # 將製程參數與其他特徵串聯
-    outputs = keras.layers.Dense(1)(x)
+#     # # Convolutional Blocks
+#     # x = keras.layers.Conv2D(hp.Int('conv_1_filter', min_value=32, max_value=128, step=32), 
+#     #                         (3, 3), activation='relu', kernel_regularizer=l2(0.00))(image_inputs) # 添加 L2 正則化
+#     # x = keras.layers.MaxPooling2D((2, 2))(x)
+#     # x = keras.layers.Conv2D(hp.Int('conv_2_filter', min_value=64, max_value=256, step=64), 
+#     #                         (3, 3), activation='relu')(x)
+#     # x = keras.layers.MaxPooling2D((2, 2))(x)
+#     # x = keras.layers.Conv2D(hp.Int('conv_3_filter', min_value=128, max_value=512, step=128), 
+#     #                         (3, 3), activation='relu')(x)
+#     # x = keras.layers.MaxPooling2D((2, 2))(x)
 
-    model = keras.Model(inputs=[image_inputs, process_inputs], outputs=outputs)
-    model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', 1e-3, 1e-2, sampling='log')),
-                  loss='mean_squared_error', metrics=['mae'])
+#     # # Transformer Blocks
+#     # for _ in range(hp.Int('num_transformer_blocks', 1, 5)):
+#     #     num_heads = hp.Choice('num_heads', values=[4, 8, 16])
+#     #     key_dim = hp.Int('key_dim', min_value=32, max_value=128, step=32)
+#     #     x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=key_dim)(x, x)
+#     #     x = layers.LayerNormalization(epsilon=1e-6)(x)
+
+#     # 定義卷積和Transformer塊（處理圖像）
+#     x = inputs_img
+#     for stage in range(1, 4):  # 假設有三個階段
+#         x = ConvBlock(hp, x, stage)
+#         x = TransformerBlock(hp, x, stage)
+#     x = layers.GlobalAveragePooling2D()(x)
+    
+#     # 處理製程參數
+#     y = layers.Dense(hp.Int('process_dense_units', 16, 128, step=16), activation="relu")(inputs_process)
+#     y = layers.Dropout(hp.Float('process_dropout', 0, 0.5, step=0.1))(y)
+
+#     # # 全局平均池化和分類器
+#     # x = layers.GlobalAveragePooling2D()(x)
+#     # outputs = layers.Dense(num_classes, activation="linear")(x)
+    
+#     # model = keras.Model(inputs=inputs, outputs=outputs)
+
+    
+
+#     # # Flatten and Dense Layers
+#     # x = keras.layers.Flatten()(x)
+#     # x = keras.layers.Dense(hp.Int('dense_units', 64, 256, step=64), activation='relu', kernel_regularizer=l2(0.00))(x) # 添加 L2 正則化
+#     # x = keras.layers.Dropout(hp.Float('dropout', 0, 0.5, step=0.1))(x)
+#     # x = keras.layers.concatenate([x, process_inputs])  # 將製程參數與其他特徵串聯
+#     # outputs = keras.layers.Dense(1)(x)
+
+#     # model = keras.Model(inputs=[image_inputs, process_inputs], outputs=outputs)
+#     # model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', 1e-3, 1e-2, sampling='log')),
+#     #               loss='mean_squared_error', metrics=['mae'])
+#     # return model
+
+#     # 合並圖像和制程參數的路徑
+#     combined = layers.concatenate([x, y])
+    
+#     # 回歸輸出層
+#     outputs = layers.Dense(num_classes, activation="linear")(combined)
+    
+#     # 建立和編譯模型
+#     model = keras.Model(inputs=[inputs_img, inputs_process], outputs=outputs)
+#     model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', 1e-4, 1e-2, sampling='log')),
+#                   loss='mean_squared_error', 
+#                   metrics=['mae'])
+
+#     return model
+
+# 定義Convolution Block
+def ConvBlock(x, filters, kernel_size, strides):
+    x = layers.Conv2D(filters, kernel_size, strides=strides, padding='same', activation='relu')(x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    return x
+
+# 定義Transformer Block
+def TransformerBlock(x, embed_dim, num_heads, ff_dim):
+    x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)(x, x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    x = layers.Dense(ff_dim, activation="relu")(x)
+    x = layers.Dense(embed_dim)(x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    return x
+
+# 建立CvT模型的函數
+def build_cvt_model(image_height, image_width, num_channels, proc_features_dim, num_classes):
+    inputs_img = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32') # 更改數值精度
+    inputs_process = keras.Input(shape=(proc_dict[freq].shape[1],), dtype='float32')
+
+    # 根據PyTorch示例直接指定的超參數
+    # 假設有三個階段，每個階段的參數如下
+    stages_filters = [64, 128, 256]  # 每個階段的filters數量
+    stages_kernel_sizes = [7, 3, 3]  # 每個階段的kernel size
+    stages_strides = [4, 2, 2]  # 每個階段的strides
+    embed_dims = [64, 128, 256]  # 每個階段的embed_dim
+    num_heads = [1, 2, 4]  # 每個階段的num_heads
+    ff_dims = [128, 256, 512]  # 每個階段的ff_dim
+
+    x = inputs_img
+    for stage in range(3):  # 有三個階段
+        x = ConvBlock(x, stages_filters[stage], stages_kernel_sizes[stage], stages_strides[stage])
+        x = TransformerBlock(x, embed_dims[stage], num_heads[stage], ff_dims[stage])
+    
+    # 全局平均池化層
+    x = layers.GlobalAveragePooling2D()(x)
+
+    # 處理制程參數路徑
+    y = layers.Dense(64, activation="relu")(inputs_process)  # 假設制程參數的Dense層為64個單元
+
+    # 合並圖像和制程參數的路徑
+    combined = layers.concatenate([x, y])
+
+    # 回歸輸出層
+    outputs = layers.Dense(num_classes, activation="linear")(combined)
+
+    # 建立和編譯模型
+    model = keras.Model(inputs=[inputs_img, inputs_process], outputs=outputs)
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),  # 根據需要調整學習率
+                  loss='mean_squared_error', 
+                  metrics=['mae'])
+
     return model
 
-# # 定義 R² 損失函數
-# def r_squared_loss(y_true, y_pred):
-#     SS_res =  tf.reduce_sum(tf.square(y_true - y_pred))
-#     SS_tot = tf.reduce_sum(tf.square(y_true - tf.reduce_mean(y_true)))
-#     return 1 - (SS_res / (SS_tot + tf.keras.backend.epsilon()))
+
+
 
 # 定義學習率調整函數
 def lr_scheduler(epoch, lr):
@@ -236,60 +357,25 @@ for freq in frequencies:
         # print(len(labels_dict[freq]))
         # print(len(proc_dict_scaled[freq]))
         
-        # 設置貝葉斯優化
-        tuner = kt.BayesianOptimization(
-            build_model,
-            objective='val_mae',
-            max_trials=max_trials,
-            num_initial_points=2,
-            directory='my_dir/Images & Parameters/',
-            project_name=f'bayesian_opt_conv_transformer_par_{freq}_fold_{fold}'
-        )
-        
-        # 獲取當前頻率的標簽
-        # current_labels = labels_dict[freq]
-        # current_proc = proc_dict[freq]
-
-        # for fold, (train_index, val_index) in enumerate(kf.split(images)):
-        #     print(f"Training on fold {fold+1}/{k_fold_splits} for frequency {freq}")
-
-        #     # 分割數據集
-        #     x_train, x_val = images[train_index], images[val_index]
-        #     y_train, y_val = current_labels[train_index], current_labels[val_index]
-        #     proc_train, proc_val = current_proc[train_index], current_proc[val_index]
-        #     print(train_index)
-        #     print(val_index)
-
-        #     # 轉換數據為DataFrame
-        #     # df_x_train = pd.DataFrame(x_train.reshape(x_train.shape[0], -1))
-        #     # df_x_val = pd.DataFrame(x_val.reshape(x_val.shape[0], -1))
-        #     df_y_train = pd.DataFrame(y_train)
-        #     df_y_val = pd.DataFrame(y_val)
-        #     # df_proc_train = pd.DataFrame(proc_train)
-        #     # df_proc_val = pd.DataFrame(proc_val)
-
-        #     # 為每個組合 (freq, fold) 創建並保存Excel檔案
-        #     file_name = f'data_{freq}_fold_{fold+1}.xlsx'
-        #     with pd.ExcelWriter(file_name) as writer:
-        #         # df_x_train.to_excel(writer, sheet_name='X_Train', index=False)
-        #         # df_x_val.to_excel(writer, sheet_name='X_Val', index=False)
-        #         df_y_train.to_excel(writer, sheet_name='Y_Train', index=False)
-        #         df_y_val.to_excel(writer, sheet_name='Y_Val', index=False)
-        #         # df_proc_train.to_excel(writer, sheet_name='Proc_Train', index=False)
-        #         # df_proc_val.to_excel(writer, sheet_name='Proc_Val', index=False)
-
-        # 將數據拆分為訓練集和驗證集
-        # x_train, x_val, y_train, y_val, proc_train, proc_val = train_test_split(images, labels_dict[freq], proc_dict[freq], test_size=0.25, random_state=42)
+        # # 設置貝葉斯優化
+        # tuner = kt.BayesianOptimization(
+        #     build_cvt_model,
+        #     objective='val_mae',
+        #     max_trials=max_trials,
+        #     num_initial_points=2,
+        #     directory='my_dir/Images & Parameters/',
+        #     project_name=f'bayesian_opt_conv_transformer_par_{freq}_fold_{fold}'
+        # )
 
         # 數據生成器
         train_data_generator = tf.data.Dataset.from_tensor_slices(((x_train, proc_train), y_train)).batch(batch_size)
         val_data_generator = tf.data.Dataset.from_tensor_slices(((x_val, proc_val), y_val)).batch(batch_size)
         
         # 開始搜索
-        tuner.search(train_data_generator, epochs=trials_epochs, validation_data=val_data_generator)
+        # tuner.search(train_data_generator, epochs=trials_epochs, validation_data=val_data_generator)
 
         # 獲取最佳超參數並創建模型
-        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0] # num_trials=1 表示只獲取一組最佳參數，而索引 [0] 表示從可能的最佳參數列表中獲取第一組。
+        # best_hps = tuner.get_best_hyperparameters(num_trials=1)[0] # num_trials=1 表示只獲取一組最佳參數，而索引 [0] 表示從可能的最佳參數列表中獲取第一組。
 
         # 早期停止功能
         # early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=100, verbose=1)
@@ -301,7 +387,8 @@ for freq in frequencies:
         tensorboard_callback = TensorBoard(log_dir='logs', histogram_freq=1)
 
         # 使用最佳超參數創建模型
-        model = build_model(best_hps)
+        # model = build_cvt_model(best_hps)
+        model = build_cvt_model(image_height, image_width, num_channels, proc_features_dim, num_classes)
         print(f'Frequency: {freq}')
         # model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[early_stopping, tensorboard_callback, lr_callback])
         model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[tensorboard_callback, lr_callback])
