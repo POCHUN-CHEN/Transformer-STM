@@ -32,6 +32,8 @@ image_height = 128
 image_width = 128
 num_channels = 1
 
+num_classes = 1  # 回歸任務
+
 # 設置貝葉斯優化 epoch 數目
 max_trials=20
 
@@ -45,37 +47,50 @@ excel_data = pd.read_excel('Circle_test.xlsx')
 ##################################### 定義 #####################################
 ################################################################################
 
-# 定義Convolution Transformer模型建構函數
-def build_model(hp):
-    inputs = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32') # 更改數值精度
+# 定義Convolution Block
+def ConvBlock(x, filters, kernel_size, strides):
+    x = layers.Conv2D(filters, kernel_size, strides=strides, padding='same', activation='relu')(x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    return x
 
-    # Convolutional Blocks
-    x = keras.layers.Conv2D(hp.Int('conv_1_filter', min_value=32, max_value=128, step=32), 
-                            (3, 3), activation='relu',kernel_regularizer=l2(0.00))(inputs) # 添加 L2 正則化
-    x = keras.layers.MaxPooling2D((2, 2))(x)
-    x = keras.layers.Conv2D(hp.Int('conv_2_filter', min_value=64, max_value=256, step=64), 
-                            (3, 3), activation='relu')(x)
-    x = keras.layers.MaxPooling2D((2, 2))(x)
-    x = keras.layers.Conv2D(hp.Int('conv_3_filter', min_value=128, max_value=512, step=128), 
-                            (3, 3), activation='relu')(x)
-    x = keras.layers.MaxPooling2D((2, 2))(x)
+# 定義Transformer Block
+def TransformerBlock(x, embed_dim, num_heads, ff_dim):
+    x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)(x, x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    x = layers.Dense(ff_dim, activation="relu")(x)
+    x = layers.Dense(embed_dim)(x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    return x
 
-    # Transformer Blocks
-    for _ in range(hp.Int('num_transformer_blocks', 1, 5)):
-        num_heads = hp.Choice('num_heads', values=[4, 8, 16])
-        key_dim = hp.Int('key_dim', min_value=32, max_value=128, step=32)
-        x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=key_dim)(x, x)
-        x = layers.LayerNormalization(epsilon=1e-6)(x)
+# 建立CvT模型的函數
+def build_cvt_model(image_height, image_width, num_channels, num_classes):
+    inputs_img = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32')
 
-    # Flatten and Dense Layers
-    x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(hp.Int('dense_units', 64, 256, step=64), activation='relu',kernel_regularizer=l2(0.00))(x)  # 添加 L2 正則化
-    x = keras.layers.Dropout(hp.Float('dropout', 0, 0.5, step=0.1))(x)
-    outputs = keras.layers.Dense(1)(x)
+    # 假設有三個階段，每個階段的參數如下
+    stages_filters = [64, 128, 256]  # 每個階段的filters數量
+    stages_kernel_sizes = [7, 3, 3]  # 每個階段的kernel size
+    stages_strides = [4, 2, 2]  # 每個階段的strides
+    embed_dims = [64, 128, 256]  # 每個階段的embed_dim
+    num_heads = [1, 2, 4]  # 每個階段的num_heads
+    ff_dims = [128, 256, 512]  # 每個階段的ff_dim
 
-    model = keras.Model(inputs, outputs)
-    model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', 1e-3, 1e-2, sampling='log')),
-                  loss='mean_squared_error', metrics=['mae'])
+    x = inputs_img
+    for stage in range(3):  # 有三個階段
+        x = ConvBlock(x, stages_filters[stage], stages_kernel_sizes[stage], stages_strides[stage])
+        x = TransformerBlock(x, embed_dims[stage], num_heads[stage], ff_dims[stage])
+    
+    # 全局平均池化層
+    x = layers.GlobalAveragePooling2D()(x)
+
+    # 回歸輸出層
+    outputs = layers.Dense(num_classes, activation="linear")(x)
+
+    # 建立和編譯模型
+    model = keras.Model(inputs=inputs_img, outputs=outputs)
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),
+                  loss='mean_squared_error', 
+                  metrics=['mae'])
+
     return model
 
 
@@ -153,21 +168,22 @@ for freq in frequencies:
         x_val = np.array(x_val)
         y_val = np.array(y_val)
 
-        # 設置貝葉斯優化
-        tuner = kt.BayesianOptimization(
-            build_model,
-            objective='val_mae',
-            max_trials=max_trials,
-            num_initial_points=2,
-            directory='my_dir/Images/',
-            project_name=f'bayesian_opt_conv_transformer_{freq}_fold_{fold}'
-        )
+        # # 設置貝葉斯優化
+        # tuner = kt.BayesianOptimization(
+        #     build_model,
+        #     objective='val_mae',
+        #     max_trials=max_trials,
+        #     num_initial_points=2,
+        #     directory='my_dir/Images/',
+        #     project_name=f'bayesian_opt_conv_transformer_{freq}_fold_{fold}'
+        # )
 
-        # 重新加載最佳超參數
-        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        # # 重新加載最佳超參數
+        # best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
 
         # 構建模型
-        model = build_model(best_hps)
+        # model = build_model(best_hps)
+        model = build_cvt_model(image_height, image_width, num_channels, num_classes)
 
         # 載入模型權重
         model.load_weights(f'Weight/Images/bayesian_conv_transformer_model_weights_{freq}_fold_{fold}.h5')

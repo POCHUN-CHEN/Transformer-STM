@@ -32,15 +32,17 @@ image_height = 128
 image_width = 128
 num_channels = 1
 
+num_classes = 1  # 回歸任務
+
 # 批次大小
-batch_size = 8
+batch_size = 128
 
 # 設置 epoch 數目
 train_epochs = 1000
 
-# 設置貝葉斯優化 epoch 數目
-max_trials=20
-trials_epochs=10
+# # 設置貝葉斯優化 epoch 數目
+# max_trials=20
+# trials_epochs=10
 
 k_fold_splits = 1
 
@@ -52,42 +54,55 @@ excel_data = pd.read_excel('Circle_test.xlsx')
 ##################################### 定義 #####################################
 ################################################################################
 
-# 定義Convolution Transformer模型建構函數
-def build_model(hp):
-    inputs = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32') # 更改數值精度
+# 定義Convolution Block
+def ConvBlock(x, filters, kernel_size, strides):
+    x = layers.Conv2D(filters, kernel_size, strides=strides, padding='same', activation='relu')(x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    return x
 
-    # Convolutional Blocks
-    x = keras.layers.Conv2D(hp.Int('conv_1_filter', min_value=32, max_value=128, step=32), 
-                            (3, 3), activation='relu',kernel_regularizer=l2(0.00))(inputs) # 添加 L2 正則化
-    x = keras.layers.MaxPooling2D((2, 2))(x)
-    x = keras.layers.Conv2D(hp.Int('conv_2_filter', min_value=64, max_value=256, step=64), 
-                            (3, 3), activation='relu')(x)
-    x = keras.layers.MaxPooling2D((2, 2))(x)
-    x = keras.layers.Conv2D(hp.Int('conv_3_filter', min_value=128, max_value=512, step=128), 
-                            (3, 3), activation='relu')(x)
-    x = keras.layers.MaxPooling2D((2, 2))(x)
+# 定義Transformer Block
+def TransformerBlock(x, embed_dim, num_heads, ff_dim):
+    x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim)(x, x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    x = layers.Dense(ff_dim, activation="relu")(x)
+    x = layers.Dense(embed_dim)(x)
+    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    return x
 
-    # Transformer Blocks
-    for _ in range(hp.Int('num_transformer_blocks', 1, 5)):
-        num_heads = hp.Choice('num_heads', values=[4, 8, 16])
-        key_dim = hp.Int('key_dim', min_value=32, max_value=128, step=32)
-        x = layers.MultiHeadAttention(num_heads=num_heads, key_dim=key_dim)(x, x)
-        x = layers.LayerNormalization(epsilon=1e-6)(x)
+# 建立CvT模型的函數
+def build_cvt_model(image_height, image_width, num_channels, num_classes):
+    inputs_img = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32')
 
-    # Flatten and Dense Layers
-    x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(hp.Int('dense_units', 64, 256, step=64), activation='relu',kernel_regularizer=l2(0.00))(x)  # 添加 L2 正則化
-    x = keras.layers.Dropout(hp.Float('dropout', 0, 0.5, step=0.1))(x)
-    outputs = keras.layers.Dense(1)(x)
+    # 假設有三個階段，每個階段的參數如下
+    stages_filters = [64, 128, 256]  # 每個階段的filters數量
+    stages_kernel_sizes = [7, 3, 3]  # 每個階段的kernel size
+    stages_strides = [4, 2, 2]  # 每個階段的strides
+    embed_dims = [64, 128, 256]  # 每個階段的embed_dim
+    num_heads = [1, 2, 4]  # 每個階段的num_heads
+    ff_dims = [128, 256, 512]  # 每個階段的ff_dim
 
-    model = keras.Model(inputs, outputs)
-    model.compile(optimizer=keras.optimizers.Adam(hp.Float('learning_rate', 1e-3, 1e-2, sampling='log')),
-                  loss='mean_squared_error', metrics=['mae'])
+    x = inputs_img
+    for stage in range(3):  # 有三個階段
+        x = ConvBlock(x, stages_filters[stage], stages_kernel_sizes[stage], stages_strides[stage])
+        x = TransformerBlock(x, embed_dims[stage], num_heads[stage], ff_dims[stage])
+    
+    # 全局平均池化層
+    x = layers.GlobalAveragePooling2D()(x)
+
+    # 回歸輸出層
+    outputs = layers.Dense(num_classes, activation="linear")(x)
+
+    # 建立和編譯模型
+    model = keras.Model(inputs=inputs_img, outputs=outputs)
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),
+                  loss='mean_squared_error', 
+                  metrics=['mae'])
+
     return model
 
 # 定義學習率調整函數
 def lr_scheduler(epoch, lr):
-    # 每 100 個 epochs 學習率下降為原來的十分之一
+    # 每 50 個 epochs 學習率下降為原來的 0.8
     if epoch > 0 and epoch % 50 == 0:
         return lr * 0.8
     return lr
@@ -174,25 +189,25 @@ for freq in frequencies:
         x_val = np.array(x_val)
         y_val = np.array(y_val)
 
-        # 設置貝葉斯優化
-        tuner = kt.BayesianOptimization(
-            build_model,
-            objective='val_mae',
-            max_trials=max_trials,
-            num_initial_points=2,
-            directory='my_dir/Images/',
-            project_name=f'bayesian_opt_conv_transformer_{freq}_fold_{fold}'
-        )
+        # # 設置貝葉斯優化
+        # tuner = kt.BayesianOptimization(
+        #     build_model,
+        #     objective='val_mae',
+        #     max_trials=max_trials,
+        #     num_initial_points=2,
+        #     directory='my_dir/Images/',
+        #     project_name=f'bayesian_opt_conv_transformer_{freq}_fold_{fold}'
+        # )
 
         # 數據生成器
         train_data_generator = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
         val_data_generator = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
 
-        # 開始搜索
-        tuner.search(train_data_generator, epochs=trials_epochs, validation_data=val_data_generator)
+        # # 開始搜索
+        # tuner.search(train_data_generator, epochs=trials_epochs, validation_data=val_data_generator)
 
-        # 獲取最佳超參數並創建模型
-        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0] # num_trials=1 表示只獲取一組最佳參數，而索引 [0] 表示從可能的最佳參數列表中獲取第一組。
+        # # 獲取最佳超參數並創建模型
+        # best_hps = tuner.get_best_hyperparameters(num_trials=1)[0] # num_trials=1 表示只獲取一組最佳參數，而索引 [0] 表示從可能的最佳參數列表中獲取第一組。
 
         # 早期停止功能
         # early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=100, verbose=1)
@@ -204,7 +219,8 @@ for freq in frequencies:
         tensorboard_callback = TensorBoard(log_dir='logs', histogram_freq=1)
 
         # 使用最佳超參數創建模型
-        model = build_model(best_hps)
+        # model = build_model(best_hps)
+        model = build_cvt_model(image_height, image_width, num_channels, num_classes)
         print(f'Frequency: {freq}')
         # model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[early_stopping, tensorboard_callback, lr_callback])
         model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[tensorboard_callback, lr_callback])
