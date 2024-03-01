@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler # 標準化製程參數
 from tensorflow.keras.regularizers import l2
 
 from tensorflow.keras.callbacks import TensorBoard
-from tensorflow.keras.callbacks import EarlyStopping
+# from tensorflow.keras.callbacks import EarlyStopping
 
 # from sklearn.model_selection import train_test_split
 
@@ -29,9 +29,13 @@ if gpus:
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_Br', '800HZ_Pcv']
 # frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
-# frequencies = ['50HZ_μa']
-        
-frequencies = ['50HZ_μa', '400HZ_μa', '800HZ_μa']
+# frequencies = ['400HZ_Bm']
+
+# frequencies = ['400HZ_Bm', '400HZ_Hc', '400HZ_Br', '400HZ_Pcv', '800HZ_Br', '800HZ_Pcv']
+
+# frequencies = ['400HZ_Bm', '400HZ_Hc']
+frequencies = ['400HZ_Br', '400HZ_Pcv']
+# frequencies = ['800HZ_Br', '800HZ_Pcv']
 
 # 定義範圍
 group_start = 1
@@ -47,7 +51,7 @@ image_height = 128
 image_width = 128
 num_channels = 1
 
-proc_features_dim = 5  # 假設制程參數維度為5
+# proc_features_dim = 5  # 假設制程參數維度為5
 num_classes = 1  # 回歸任務
 
 # 批次大小
@@ -179,9 +183,9 @@ def TransformerBlock(x, embed_dim, num_heads, ff_dim):
     return x
 
 # 建立CvT模型的函數
-def build_cvt_model(image_height, image_width, num_channels, proc_features_dim, num_classes):
+def build_cvt_model(image_height, image_width, num_channels, proc_dict, num_classes):
     inputs_img = keras.Input(shape=(image_height, image_width, num_channels), dtype='float32') # 更改數值精度
-    inputs_process = keras.Input(shape=(proc_dict[freq].shape[1],), dtype='float32')
+    inputs_process = keras.Input(shape=(proc_dict.shape[1],), dtype='float32')
 
     # 根據PyTorch示例直接指定的超參數
     # 假設有三個階段，每個階段的參數如下
@@ -211,7 +215,7 @@ def build_cvt_model(image_height, image_width, num_channels, proc_features_dim, 
 
     # 建立和編譯模型
     model = keras.Model(inputs=[inputs_img, inputs_process], outputs=outputs)
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-2),  # 根據需要調整學習率
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),  # 根據需要調整學習率
                   loss='mean_squared_error', 
                   metrics=['mae'])
 
@@ -228,15 +232,15 @@ def lr_scheduler(epoch, lr):
 ################################## 工件材料性質 ##################################
 ################################################################################
 
-# 載入材料數據標簽
-labels_dict = {}
-valid_dict = {}
+def process_material_properties(excel_data, group_start, group_end, piece_num_start, piece_num_end, image_layers):
+    # 載入材料數據標簽
+    labels_dict = []
+    valid_dict = []
 
-# 假設每個大組有5個小組，並且每小組對應一行Excel數據
-start_index = (group_start - 1) * (piece_num_end - piece_num_start + 1)
-end_index = group_end * ((piece_num_end - piece_num_start + 1))
+    # 假設每個大組有5個小組，並且每小組對應一行Excel數據
+    start_index = (group_start - 1) * (piece_num_end - piece_num_start + 1)
+    end_index = group_end * ((piece_num_end - piece_num_start + 1))
 
-for freq in frequencies:
     valid_indices = []  # 用於記錄有效圖像的索引
     label_groups = []
     count = 0
@@ -250,26 +254,28 @@ for freq in frequencies:
                 valid_indices.append(count)  # 添加有效圖像的索引
             count += 1
         
-    labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組
+    labels_dict = np.array(label_groups)  # 轉換為NumPy數組
 
     # 過濾 valid_indices，只保留新範圍內的索引
     valid_indices = [index for index in valid_indices if start_index <= index < end_index]
 
-    valid_dict[freq] = np.array(valid_indices)  # 轉換為NumPy數組
+    valid_dict = np.array(valid_indices)  # 轉換為NumPy數組
+
+    return labels_dict, valid_dict, count
 
 
 #################################################################################
 #################################### 製程參數 ####################################
 #################################################################################
 
-# 載入製程參數
-Process_parameters = ['氧濃度', '雷射掃描速度', '雷射功率', '線間距', '能量密度']
-proc_dict = {}  # 儲存所有頻率全部大組製程參數
-proc_dict_scaled = {}
+def process_procedure_parameters(excel_process, valid_dict, image_layers):
+    # 載入製程參數
+    Process_parameters = ['氧濃度', '雷射掃描速度', '雷射功率', '線間距', '能量密度']
+    proc_dict = []  # 儲存所有頻率全部大組製程參數
+    proc_dict_scaled = []
 
-for freq in frequencies:
     valid_proc_groups = []  # 儲存有效的製程參數組
-    for index in valid_dict[freq]:  # 只遍歷有效的索引
+    for index in valid_dict:  # 只遍歷有效的索引
         group_procs = []  # 每顆的製程參數們
         parameters_group = []
         group_index = index // (piece_num_end - piece_num_start + 1)
@@ -284,38 +290,41 @@ for freq in frequencies:
         valid_proc_groups.extend(group_procs)
 
     # 轉換為NumPy數組
-    proc_dict[freq] = np.array(valid_proc_groups)
+    proc_dict = np.array(valid_proc_groups)
     
     # 初始化 StandardScaler
     scaler = StandardScaler()
     
     # 標準化製程參數
-    proc_dict_scaled[freq] = scaler.fit_transform(proc_dict[freq])
+    proc_dict_scaled = scaler.fit_transform(proc_dict)
+    return proc_dict_scaled
 
 
 #################################################################################
 #################################### 積層影像 ####################################
 #################################################################################
 
-valid_images = []  # 用於儲存有效的圖像
+def process_layered_images(valid_dict, image_layers, image_height, image_width):
+    valid_images = []  # 用於儲存有效的圖像
 
-for index in valid_dict[freq]:  # 只遍歷有效的索引
-    group_index = index // (piece_num_end - piece_num_start + 1) + 1
-    image_num = index % (piece_num_end - piece_num_start + 1) + 1
+    for index in valid_dict:  # 只遍歷有效的索引
+        group_index = index // (piece_num_end - piece_num_start + 1) + 1
+        image_num = index % (piece_num_end - piece_num_start + 1) + 1
 
-    folder_name = f'circle(340x345)/trail{group_index:01d}_{image_num:02d}'
-    folder_path = f'data/{folder_name}/'
-    
-    for i in range(image_layers):
-        filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
-        image = cv2.imread(filename)
-        image = cv2.resize(image, (image_width, image_height))
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        image = image / 255.0  # 歸一化
-        valid_images.append(image)
+        folder_name = f'circle(340x345)/trail{group_index:01d}_{image_num:02d}'
+        folder_path = f'data/{folder_name}/'
+        
+        for i in range(image_layers):
+            filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
+            image = cv2.imread(filename)
+            image = cv2.resize(image, (image_width, image_height))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            image = image / 255.0  # 歸一化
+            valid_images.append(image)
 
-# 轉換為NumPy數組
-images = np.array(valid_images)
+    # 轉換為NumPy數組
+    images = np.array(valid_images)
+    return images
 
 
 #################################################################################
@@ -325,6 +334,15 @@ images = np.array(valid_images)
 # 對於每個頻率進行模型訓練和保存
 for freq in frequencies:
     print(f"Training for frequency {freq}")
+
+    labels_dict, valid_dict, count = process_material_properties(excel_data, group_start, group_end, piece_num_start, piece_num_end, image_layers)
+    proc_dict_scaled = process_procedure_parameters(excel_process, valid_dict, image_layers)
+    images = process_layered_images(valid_dict, image_layers, image_height, image_width)
+    print(len(labels_dict))
+    print(len(proc_dict_scaled))
+    print(len(images))
+
+
     # 定義訓練集和驗證集
     x_train, y_train, proc_train = [], [], []
     x_val, y_val, proc_val = [], [], []
@@ -335,25 +353,26 @@ for freq in frequencies:
     # 按原始數據的分組規則遍歷
     for d in range(0, count, 5):  # 原始數據，每五個一組
         for j in range(d, d + 5):
-            if j in valid_dict[freq]:
+            if j in valid_dict:
                 first_valid_indices_per_group.append(j)
                 break  # 找到每組的第一個有效索引後，跳出內層循环，繼續下一組
-
+    
+    # for index in valid_dict[freq]:  # 只遍歷有效的索引
     # 遍歷每個有效的索引而不是固定的範圍
-    for i in range(len(valid_dict[freq])):
+    for i in range(len(valid_dict)):
         index = i * image_layers
 
         # 決定是否將當前索引用作驗證集
-        if valid_dict[freq][i] in first_valid_indices_per_group :
+        if valid_dict[i] in first_valid_indices_per_group :
             # 驗證集
             x_val.extend(images[index:index + image_layers])
-            y_val.extend(labels_dict[freq][index:index + image_layers])
-            proc_val.extend(proc_dict_scaled[freq][index:index + image_layers])
+            y_val.extend(labels_dict[index:index + image_layers])
+            proc_val.extend(proc_dict_scaled[index:index + image_layers])
         else:
             # 訓練集
             x_train.extend(images[index:index + image_layers])
-            y_train.extend(labels_dict[freq][index:index + image_layers])
-            proc_train.extend(proc_dict_scaled[freq][index:index + image_layers])
+            y_train.extend(labels_dict[index:index + image_layers])
+            proc_train.extend(proc_dict_scaled[index:index + image_layers])
 
 
     # 轉換為 NumPy 數組
@@ -416,7 +435,7 @@ for freq in frequencies:
 
     # 使用最佳超參數創建模型
     # model = build_cvt_model(best_hps)
-    model = build_cvt_model(image_height, image_width, num_channels, proc_features_dim, num_classes)
+    model = build_cvt_model(image_height, image_width, num_channels, proc_dict_scaled, num_classes)
     print(f'Frequency: {freq}')
     # model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[early_stopping, tensorboard_callback, lr_callback])
     model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[tensorboard_callback, lr_callback])
