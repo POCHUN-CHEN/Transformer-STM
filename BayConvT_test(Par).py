@@ -15,13 +15,12 @@ from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 # 提取不同頻率
-# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_Br', '800HZ_Pcv']
-# frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
-frequencies = ['400HZ_Bm', '400HZ_Hc']
+frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 
-# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_μa', '800HZ_Bm', '800HZ_Hc', '800HZ_μa']
-# frequencies = ['400HZ_Bm', '400HZ_Hc', '400HZ_Br', '400HZ_Pcv', '800HZ_Br', '800HZ_Pcv']
+# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv']
+# frequencies = ['200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv']
+# frequencies = ['400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv']
+# frequencies = ['800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 
 # 定義範圍
 group_start = 1
@@ -126,11 +125,14 @@ def build_cvt_model(image_height, image_width, num_channels, proc_dict, num_clas
     # 全局平均池化層
     x = layers.GlobalAveragePooling2D()(x)
 
-    # 處理制程參數路徑
-    y = layers.Dense(64, activation="relu")(inputs_process)  # 假設制程參數的Dense層為64個單元
+     # 加強製程參數處理部分
+    y = layers.Dense(128, activation="relu")(inputs_process)
+    y = layers.Dense(128, activation="relu")(y)  # 增加額外的Dense層
+    y = layers.Attention()([y, y])  # 引入自注意力層增強特徵
 
     # 合並圖像和制程參數的路徑
     combined = layers.concatenate([x, y])
+    combined = layers.Dense(64, activation="relu")(combined)  # 融合前進行進一步處理
 
     # 回歸輸出層
     outputs = layers.Dense(num_classes, activation="linear")(combined)
@@ -328,7 +330,8 @@ for freq in frequencies:
     # plt.text(0.0, 0.0,f'R^2: {r2:.3f}\nMSE: {mse:.3f}\nMAE: {mae:.3f}', 
     #          ha='left', va='center', transform=plt.gca().transAxes)
     plt.savefig(f'Plots/Images & Parameters/R^2_par_{freq}.png')  # 儲存圖片
-    plt.show()
+    # plt.show()
+    plt.clf() # 清空畫布（plt.show()內建有）
 
     # 預測值與實際值分成兩條線顯示(實際與預測畫在一起)
     # 生成圖片編號
@@ -344,7 +347,8 @@ for freq in frequencies:
     plt.title(f'Actual vs Predicted - {freq}')
     plt.legend()  # 顯示圖例
     plt.savefig(f'Plots/Images & Parameters/Actual_vs_Predicted_par_{freq}.png')  # 儲存圖片
-    plt.show()
+    # plt.show()
+    plt.clf() # 清空畫布（plt.show()內建有）
 
 # 列印模型簡報
 # tuner.results_summary() #查看 BayesianOptimization 最佳解（Val_mae 分數越低越好）

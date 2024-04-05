@@ -12,6 +12,14 @@ from tensorflow.keras.regularizers import l2
 from tensorflow.keras.callbacks import TensorBoard
 from tensorflow.keras.callbacks import EarlyStopping
 
+# 動態記憶體分配
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
 
 # 提取不同頻率
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
@@ -19,8 +27,8 @@ from tensorflow.keras.callbacks import EarlyStopping
 frequencies = ['50HZ_μa']
 
 # 定義範圍
-group_start = 11
-group_end = 20
+group_start = 1
+group_end = 40
 piece_num_start = 1
 piece_num_end = 5
 
@@ -56,8 +64,10 @@ excel_data = pd.read_excel('Circle_test.xlsx')
 
 # 定義Convolution Block
 def ConvBlock(x, filters, kernel_size, strides):
-    x = layers.Conv2D(filters, kernel_size, strides=strides, padding='same', activation='relu')(x)
-    x = layers.LayerNormalization(epsilon=1e-6)(x)
+    # 使用更小的過濾器數量和更大的步長
+    x = layers.Conv2D(filters, kernel_size, strides=strides, padding='same')(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
     return x
 
 # 定義Transformer Block
@@ -112,48 +122,63 @@ def lr_scheduler(epoch, lr):
 ################################## 工件材料性質 ##################################
 ################################################################################
 
-# 載入材料數據標簽
-labels_dict = {}
-for freq in frequencies:
+def process_material_properties(excel_data, group_start, group_end, piece_num_start, piece_num_end, image_layers):
+    # 載入材料數據標簽
+    labels_dict = []
+    valid_dict = []
+
+    # 假設每個大組有5個小組，並且每小組對應一行Excel數據
+    start_index = (group_start - 1) * (piece_num_end - piece_num_start + 1)
+    end_index = group_end * ((piece_num_end - piece_num_start + 1))
+
+    valid_indices = []  # 用於記錄有效圖像的索引
     label_groups = []
     count = 0
     for i in range(1, group_end + 1):
         for j in range(piece_num_start, piece_num_end + 1):  # 每大組包含5小組
-            labels = excel_data.loc[count, freq]
-            label_groups.extend([labels] * image_layers)
+            labels = excel_data.loc[count, str(freq)]
+            # 使用 pd.isnull() 檢查 labels 是否為 NaN
+            if not pd.isnull(labels):  # 如果 labels 不為 NaN，則添加到 label_groups
+                if start_index <= count < end_index:
+                    label_groups.extend([labels] * image_layers)
+                valid_indices.append(count)  # 添加有效圖像的索引
             count += 1
         
-    labels_dict[freq] = np.array(label_groups)  # 轉換為NumPy數組
+    labels_dict = np.array(label_groups)  # 轉換為NumPy數組
+
+    # 過濾 valid_indices，只保留新範圍內的索引
+    valid_indices = [index for index in valid_indices if start_index <= index < end_index]
+
+    valid_dict = np.array(valid_indices)  # 轉換為NumPy數組
+
+    return labels_dict, valid_dict, count
 
 
 #################################################################################
 #################################### 積層影像 ####################################
 #################################################################################
 
-# 載入圖像數據
-image_groups = []
+def process_layered_images(valid_dict, image_layers, image_height, image_width):
+    valid_images = []  # 用於儲存有效的圖像
 
-for group in range(group_start, group_end + 1):
-    group_images = []
-    for image_num in range(piece_num_start, piece_num_end + 1):
-        folder_name = f'circle(340x345)/trail{group:01d}_{image_num:02d}'
+    for index in valid_dict:  # 只遍歷有效的索引
+        group_index = index // (piece_num_end - piece_num_start + 1) + 1
+        image_num = index % (piece_num_end - piece_num_start + 1) + 1
+
+        folder_name = f'circle(340x345)/trail{group_index:01d}_{image_num:02d}'
         folder_path = f'data/{folder_name}/'
-
-        image_group = []
+        
         for i in range(image_layers):
             filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
             image = cv2.imread(filename)
             image = cv2.resize(image, (image_width, image_height))
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             image = image / 255.0  # 歸一化
-            image_group.append(image)
+            valid_images.append(image)
 
-        group_images.extend(image_group)
-
-    image_groups.extend(group_images)
-
-# 轉換為NumPy數組
-images = np.array(image_groups)
+    # 轉換為NumPy數組
+    images = np.array(valid_images)
+    return images
 
 
 #################################################################################
@@ -162,90 +187,104 @@ images = np.array(image_groups)
 
 # 對於每個頻率進行模型訓練和保存
 for freq in frequencies:
-    for fold in range(1, k_fold_splits + 1):
-        print(f"Training on fold {fold}/{k_fold_splits} for frequency {freq}")
-        # 定義訓練集和驗證集
-        x_train, y_train = [], []
-        x_val, y_val = [], []
+    print(f"Training for frequency {freq}")
 
-        for group in range(group_start, group_end + 1):
-            for image_num in range(piece_num_start, piece_num_end + 1):
-                # 計算在 labels_dict 和 proc_dict 中的索引
-                images_index = ((group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers)%((group_end + 1 - group_start) * (piece_num_end + 1 - piece_num_start) * image_layers)
-                index = (group - 1) * piece_num_end * image_layers + (image_num - 1) * image_layers
+    labels_dict, valid_dict, count = process_material_properties(excel_data, group_start, group_end, piece_num_start, piece_num_end, image_layers)
+    images = process_layered_images(valid_dict, image_layers, image_height, image_width)
+    
+    # 定義訓練集和驗證集
+    x_train, y_train = [], []
+    x_val, y_val = [], []
 
-                # K-折交叉驗證
-                if image_num == fold:
-                    x_val.extend(images[images_index:images_index + image_layers])
-                    y_val.extend(labels_dict[freq][index:index + image_layers])
-                    
-                else:
-                    x_train.extend(images[images_index:images_index + image_layers])
-                    y_train.extend(labels_dict[freq][index:index + image_layers])
+    # 初始化每組的第一個有效索引列表
+    first_valid_indices_per_group = []
 
-        # 轉換為 NumPy 數組
-        x_train = np.array(x_train)
-        y_train = np.array(y_train)
-        x_val = np.array(x_val)
-        y_val = np.array(y_val)
+    # 按原始數據的分組規則遍歷
+    for d in range(0, count, 5):  # 原始數據，每五個一組
+        for j in range(d, d + 5):
+            if j in valid_dict:
+                first_valid_indices_per_group.append(j)
+                break  # 找到每組的第一個有效索引後，跳出內層循环，繼續下一組
+    
+    # for index in valid_dict[freq]:  # 只遍歷有效的索引
+    # 遍歷每個有效的索引而不是固定的範圍
+    for i in range(len(valid_dict)):
+        index = i * image_layers
 
-        # # 設置貝葉斯優化
-        # tuner = kt.BayesianOptimization(
-        #     build_model,
-        #     objective='val_mae',
-        #     max_trials=max_trials,
-        #     num_initial_points=2,
-        #     directory='my_dir/Images/',
-        #     project_name=f'bayesian_opt_conv_transformer_{freq}_fold_{fold}'
-        # )
+        # 決定是否將當前索引用作驗證集
+        if valid_dict[i] in first_valid_indices_per_group :
+            # 驗證集
+            x_val.extend(images[index:index + image_layers])
+            y_val.extend(labels_dict[index:index + image_layers])
+        else:
+            # 訓練集
+            x_train.extend(images[index:index + image_layers])
+            y_train.extend(labels_dict[index:index + image_layers])
 
-        # 數據生成器
-        train_data_generator = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
-        val_data_generator = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
 
-        # # 開始搜索
-        # tuner.search(train_data_generator, epochs=trials_epochs, validation_data=val_data_generator)
+    # 轉換為 NumPy 數組
+    x_train = np.array(x_train)
+    y_train = np.array(y_train)
+    x_val = np.array(x_val)
+    y_val = np.array(y_val)
 
-        # # 獲取最佳超參數並創建模型
-        # best_hps = tuner.get_best_hyperparameters(num_trials=1)[0] # num_trials=1 表示只獲取一組最佳參數，而索引 [0] 表示從可能的最佳參數列表中獲取第一組。
+    # # 設置貝葉斯優化
+    # tuner = kt.BayesianOptimization(
+    #     build_model,
+    #     objective='val_mae',
+    #     max_trials=max_trials,
+    #     num_initial_points=2,
+    #     directory='my_dir/Images/',
+    #     project_name=f'bayesian_opt_conv_transformer_{freq}_fold_{fold}'
+    # )
 
-        # 早期停止功能
-        # early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=100, verbose=1)
+    # 數據生成器
+    train_data_generator = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(batch_size)
+    val_data_generator = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(batch_size)
 
-        # 學習率調整
-        lr_callback = tf.keras.callbacks.LearningRateScheduler(lr_scheduler)
+    # # 開始搜索
+    # tuner.search(train_data_generator, epochs=trials_epochs, validation_data=val_data_generator)
 
-        # 創建 TensorBoard 回調
-        tensorboard_callback = TensorBoard(log_dir='logs', histogram_freq=1)
+    # # 獲取最佳超參數並創建模型
+    # best_hps = tuner.get_best_hyperparameters(num_trials=1)[0] # num_trials=1 表示只獲取一組最佳參數，而索引 [0] 表示從可能的最佳參數列表中獲取第一組。
 
-        # 使用最佳超參數創建模型
-        # model = build_model(best_hps)
-        model = build_cvt_model(image_height, image_width, num_channels, num_classes)
-        print(f'Frequency: {freq}')
-        # model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[early_stopping, tensorboard_callback, lr_callback])
-        model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[tensorboard_callback, lr_callback])
-        
+    # 早期停止功能
+    # early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=100, verbose=1)
 
-        # 初始化 DataFrame 以存儲記錄（抓取訓練過程的趨勢資料）
-        records = pd.DataFrame()
+    # 學習率調整
+    lr_callback = tf.keras.callbacks.LearningRateScheduler(lr_scheduler)
 
-        # 獲取整體 epochs 的記錄
-        current_records = pd.DataFrame(model.history.history)
+    # 創建 TensorBoard 回調
+    tensorboard_callback = TensorBoard(log_dir='logs', histogram_freq=1)
 
-        # 計算實際的 epoch 數量
-        actual_epochs = len(current_records)
-        
-        # 添加 epoch 列
-        current_records.insert(0, 'epoch', range(1, actual_epochs + 1))
+    # 使用最佳超參數創建模型
+    # model = build_model(best_hps)
+    model = build_cvt_model(image_height, image_width, num_channels, num_classes)
+    print(f'Frequency: {freq}')
+    # model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[early_stopping, tensorboard_callback, lr_callback])
+    model.fit(train_data_generator, epochs=train_epochs, validation_data=val_data_generator, callbacks=[tensorboard_callback, lr_callback])
+    
 
-        # 將當前記錄添加到整體記錄中
-        records = pd.concat([records, current_records], ignore_index=True)
+    # 初始化 DataFrame 以存儲記錄（抓取訓練過程的趨勢資料）
+    records = pd.DataFrame()
 
-        # 將 DataFrame 寫入 Excel 檔案
-        records.to_excel(f'Records/Images/bayesian_conv_transformer_records_{freq}_fold_{fold}.xlsx', index=False)
+    # 獲取整體 epochs 的記錄
+    current_records = pd.DataFrame(model.history.history)
 
-        # 清除先前的訓練記錄
-        records = records.iloc[0:0]  # 刪除所有行，得到一個空的 DataFrame
+    # 計算實際的 epoch 數量
+    actual_epochs = len(current_records)
+    
+    # 添加 epoch 列
+    current_records.insert(0, 'epoch', range(1, actual_epochs + 1))
 
-        # 保存模型權重
-        model.save_weights(f'Weight/Images/bayesian_conv_transformer_model_weights_{freq}_fold_{fold}.h5')
+    # 將當前記錄添加到整體記錄中
+    records = pd.concat([records, current_records], ignore_index=True)
+
+    # 將 DataFrame 寫入 Excel 檔案
+    records.to_excel(f'Records/Images/bayesian_conv_transformer_records_{freq}.xlsx', index=False)
+
+    # 清除先前的訓練記錄
+    records = records.iloc[0:0]  # 刪除所有行，得到一個空的 DataFrame
+
+    # 保存模型權重
+    model.save_weights(f'Weight/Images/bayesian_conv_transformer_model_weights_{freq}.h5')
