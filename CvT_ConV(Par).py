@@ -1,14 +1,57 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from tensorflow.keras.utils import plot_model
 import numpy as np
 import pandas as pd
 import cv2
 
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.callbacks import TensorBoard
+import collections
+from itertools import repeat
 
+# 動態記憶體分配
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
+
+# 提取不同頻率
+# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br']
+# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv']
+# frequencies = ['200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv']
+# frequencies = ['400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv']
+# frequencies = ['800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+frequencies = ['400HZ_Pcv']
+
+# 定義範圍
+group_start = 1
+group_end = 40
+piece_num_start = 1
+piece_num_end = 5
+
+# 定義其他相關範圍或常數
+image_layers = 200  # 每顆影像的層數
+
+# 定義圖像的高度、寬度和通道數
+image_height = 128
+image_width = 128
+num_channels = 1
+
+num_classes = 1  # 回歸任務
+
+# 批次大小
+batch_size = 128
+
+# 設置 epoch 數目
+train_epochs = 1000
+
+# 讀取Excel文件中的標簽數據
+excel_data = pd.read_excel('Circle_test.xlsx')
+excel_process = pd.read_excel('Process_parameters.xlsx')
 
 # 定義 Projection 層
 class Projection(layers.Layer):
@@ -74,44 +117,28 @@ class ConvAttention(layers.Layer):
         self.proj = layers.Dense(dim)
 
     def call(self, inputs):
-        # print("留言密碼測試")
-        # print("Shape of inputs:", inputs.shape)
         # 計算 query, key, value
         # 執行卷積投影
         q = self.q_proj(inputs)
         k = self.k_proj(inputs)
         v = self.v_proj(inputs)
 
-        # 執行線性投影（非必要）
-        q = self.proj_q(q)
-        k = self.proj_k(k)
-        v = self.proj_v(v)
-
-        # # print 語句來印出形狀
-        # print("Shape of q:", q.shape)
-        # print("Shape of k:", k.shape)
-        # print("Shape of v:", v.shape)
+        # # 執行線性投影（非必要）
+        # q = self.proj_q(q)
+        # k = self.proj_k(k)
+        # v = self.proj_v(v)
 
         _, h, w, c = q.shape
-        # print("Before reshape - h:", h, ", w:", w, ", c:", c)
         q = tf.reshape(q, [-1, h * w, c])
         k = tf.reshape(k, [-1, h * w, c])
         v = tf.reshape(v, [-1, h * w, c])
 
-        # # 重塑操作後印出形狀
-        # print("After reshape - Shape of q:", q.shape)
-        # print("After reshape - Shape of k:", k.shape)
-        # print("After reshape - Shape of v:", v.shape)
-
         # 注意力機制操作
         attn_output = self.attention(q, v, k)
-        print("Shape of attn_output:", attn_output.shape)
-        attn_output = self.attn_dropout(attn_output) # （非必要）
+        attn_output = self.attn_dropout(attn_output) #（非必要）
 
         # 將輸出的形狀從 (batch_size, height * width, channels) 轉變回原始的形狀
         attn_output = tf.reshape(attn_output, [-1, h, w, c])
-        # 重塑回原始形狀後印出形狀
-        print("After reshape back - Shape of attn_output:", attn_output.shape)
 
         # 線性變換並應用dropout（非必要）
         output = self.proj(attn_output)
@@ -174,19 +201,6 @@ class ConvEmbed(layers.Layer):
         })
         return config
 
-
-# # 定義 ConvBlock 層
-# class ConvBlock(layers.Layer):
-#     def __init__(self, filters, kernel_size, strides, name=None):
-#         super().__init__(name=name)
-#         self.conv = layers.Conv2D(filters, kernel_size, strides=strides, padding='same', activation='relu')
-#         self.norm = layers.LayerNormalization(epsilon=1e-6)
-
-#     def call(self, inputs):
-#         x = self.conv(inputs)
-#         x = self.norm(x)
-#         return x
-
 # 定義 ConvTransformerBlock 層
 class ConvTransformerBlock(layers.Layer):
     def __init__(self, dim, num_heads, kernel_size, strides, padding, qkv_method='dw_bn', ffn_dim_factor=4, dropout_rate=0.1, name=None):
@@ -202,6 +216,7 @@ class ConvTransformerBlock(layers.Layer):
         self.norm1 = layers.LayerNormalization(epsilon=1e-6)
         self.attn = ConvAttention(dim, num_heads, kernel_size, strides, padding, qkv_method=qkv_method)
         self.norm2 = layers.LayerNormalization(epsilon=1e-6)
+        
         #  Mlp 實現
         self.ffn = keras.Sequential([
             layers.Dense(dim * self.ffn_dim_factor, activation=tf.nn.gelu),  # 可配置的隐藏层大小
@@ -214,6 +229,7 @@ class ConvTransformerBlock(layers.Layer):
         self.output_conv = layers.Conv2D(dim, kernel_size=1)
 
     def call(self, inputs):
+        x = inputs   
         x = self.norm1(inputs)
         attn_output = self.attn(x)
         x = attn_output + inputs
@@ -270,17 +286,141 @@ def create_cvt_model(image_height, image_width, num_channels, proc_dim, num_clas
     model = keras.Model(inputs=[image_inputs, proc_inputs], outputs=outputs)
     return model
 
-# 定義圖像的高度、寬度和通道數
-image_height = 128
-image_width = 128
-num_channels = 1
+# 定義學習率調整函數
+def lr_scheduler(epoch, lr):
+    if epoch > 0 and epoch % 50 == 0:
+        return lr * 0.8
+    return lr
 
-# 假設 proc_dim 和 num_classes
-proc_dim = 5  # 假設處理參數維度為5
-num_classes = 1  # 回歸任務
+# 數據預處理函數
+def preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers, image_height, image_width):
+    # 載入材料數據標簽
+    labels_dict = []
+    valid_dict = []
 
-# 使用模型建立函數來創建模型
-model = create_cvt_model(image_height, image_width, num_channels, proc_dim, num_classes)
+    start_index = (group_start - 1) * (piece_num_end - piece_num_start + 1)
+    end_index = group_end * ((piece_num_end - piece_num_start + 1))
 
-# 使用 plot_model 函數畫出模型架構
-plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
+    valid_indices = []
+    label_groups = []
+    count = 0
+    for i in range(1, group_end + 1):
+        for j in range(piece_num_start, piece_num_end + 1):
+            labels = excel_data.loc[count, str(freq)]
+            if not pd.isnull(labels):
+                if start_index <= count < end_index:
+                    label_groups.extend([labels] * image_layers)
+                valid_indices.append(count)
+            count += 1
+
+    labels_dict = np.array(label_groups)
+    valid_indices = [index for index in valid_indices if start_index <= index < end_index]
+    valid_dict = np.array(valid_indices)
+
+    # 載入製程參數
+    Process_parameters = ['氧濃度', '雷射掃描速度', '雷射功率', '線間距', '能量密度']
+    proc_dict = []
+    valid_proc_groups = []
+    for index in valid_dict:
+        group_procs = []
+        parameters_group = []
+        group_index = index // (piece_num_end - piece_num_start + 1)
+
+        for para in Process_parameters:
+            parameters = excel_process.loc[group_index, para]
+            parameters_group.append(parameters)
+
+        group_procs.extend([parameters_group] * image_layers)
+        valid_proc_groups.extend(group_procs)
+
+    proc_dict = np.array(valid_proc_groups)
+
+    # 標準化製程參數
+    scaler = StandardScaler()
+    proc_dict_scaled = scaler.fit_transform(proc_dict)
+
+    # 處理積層影像
+    valid_images = []
+    for index in valid_dict:
+        group_index = index // (piece_num_end - piece_num_start + 1) + 1
+        image_num = index % (piece_num_end - piece_num_start + 1) + 1
+
+        folder_name = f'circle(340x345)/trail{group_index:01d}_{image_num:02d}'
+        folder_path = f'data/{folder_name}/'
+
+        for i in range(image_layers):
+            filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
+            image = cv2.imread(filename)
+            image = cv2.resize(image, (image_width, image_height))
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            image = image / 255.0
+            valid_images.append(image)
+
+    images = np.array(valid_images)
+
+    return labels_dict, proc_dict_scaled, images, valid_dict, count
+
+# 訓練模型並保存結果
+def train_and_save_model(freq, labels_dict, proc_dict_scaled, images, valid_dict, count):
+    # 定義訓練集和驗證集
+    x_train, y_train, proc_train = [], [], []
+    x_val, y_val, proc_val = [], [], []
+
+    first_valid_indices_per_group = []
+    for d in range(0, count, 5):
+        for j in range(d, d + 5):
+            if j in valid_dict:
+                first_valid_indices_per_group.append(j)
+                break
+
+    for i in range(len(valid_dict)):
+        index = i * image_layers
+
+        if valid_dict[i] in first_valid_indices_per_group:
+            x_val.extend(images[index:index + image_layers])
+            y_val.extend(labels_dict[index:index + image_layers])
+            proc_val.extend(proc_dict_scaled[index:index + image_layers])
+        else:
+            x_train.extend(images[index:index + image_layers])
+            y_train.extend(labels_dict[index:index + image_layers])
+            proc_train.extend(proc_dict_scaled[index:index + image_layers])
+
+    x_train = np.array(x_train)
+    y_train = np.array(y_train)
+    proc_train = np.array(proc_train)
+    x_val = np.array(x_val)
+    y_val = np.array(y_val)
+    proc_val = np.array(proc_val)
+
+    # 創建模型
+    model = create_cvt_model(image_height, image_width, num_channels, proc_dict_scaled.shape[1], num_classes)
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),
+                  loss='mean_squared_error',
+                  metrics=['mae'])
+
+    # 學習率調整
+    lr_callback = keras.callbacks.LearningRateScheduler(lr_scheduler)
+
+    # 創建 TensorBoard 回調
+    tensorboard_callback = TensorBoard(log_dir='logs', histogram_freq=1)
+
+    # 訓練模型
+    model.fit([x_train, proc_train], y_train, epochs=train_epochs, batch_size=batch_size,
+              validation_data=([x_val, proc_val], y_val), callbacks=[tensorboard_callback, lr_callback])
+
+    # 保存模型權重
+    model.save_weights(f'Weight/Images & Parameters/cvt_model_weights_{freq}.h5')
+
+    # 初始化 DataFrame 以存儲記錄
+    records = pd.DataFrame(model.history.history)
+    records.insert(0, 'epoch', range(1, len(records) + 1))
+    records.to_excel(f'Records/Images & Parameters/cvt_records_{freq}.xlsx', index=False)
+
+# 主程序
+for freq in frequencies:
+    print(f"Training for frequency {freq}")
+
+    labels_dict, proc_dict_scaled, images, valid_dict, count = preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers, image_height, image_width)
+
+    train_and_save_model(freq, labels_dict, proc_dict_scaled, images, valid_dict, count)
+
