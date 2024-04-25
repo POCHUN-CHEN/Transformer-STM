@@ -359,28 +359,9 @@ class ConvTransformerBlock(layers.Layer):
             layers.Dense(dim * self.ffn_dim_factor, activation=tf.nn.gelu),  # 可配置的隐藏层大小
             layers.Dropout(dropout_rate),  # 加入Dropout层
             layers.Dense(dim),
+            layers.Dropout(dropout_rate),  # 加入Dropout层
         ])
         self.output_conv = layers.Conv2D(dim, kernel_size=1)
-
-    # def call(self, inputs):
-    #     x = self.norm1(inputs)
-    #     attn_output = self.attn(x)
-    #     x = attn_output + inputs
-
-    #     # # 檢查並調整通道數
-    #     # if attn_output.shape[-1] != inputs.shape[-1]:
-    #     #     adjusted_inputs = self.adjust_channels(inputs)
-    #     # else:
-    #     #     adjusted_inputs = inputs
-
-    #     # x = attn_output + adjusted_inputs  # 現在形狀相匹配，可以相加
-
-    #     y = self.norm2(x)
-    #     # y = self.ffn(y)
-    #     ffn_output = self.ffn(y)
-    #     ffn_output = self.output_conv(ffn_output) # 調整 FFN 輸出維度
-    #     # ffn_output = tf.reshape(ffn_output, tf.shape(x))  # 使用 tf.reshape 調整 FFN 輸出維度
-    #     return x + ffn_output
         
     def call(self, inputs):
         x = self.norm1(inputs)
