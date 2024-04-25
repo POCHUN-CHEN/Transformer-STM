@@ -13,8 +13,10 @@ from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 # 提取不同頻率
-frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 # frequencies = ['400HZ_Pcv']
+frequencies = ['50HZ_μa']
+
 # 定義範圍
 group_start = 1
 group_end = 40
@@ -389,7 +391,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
 
     # 構建模型
     model = create_cvt_model(image_height, image_width, num_channels, proc_dict_scaled.shape[1], num_classes)
-    
+
     # 載入模型權重
     model.load_weights(f'Weight/Images & Parameters/cvt_model_weights_{freq}.h5')
 

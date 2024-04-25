@@ -69,12 +69,17 @@ class Projection(layers.Layer):
         elif method == 'avg':
             self.avg_pool = layers.AveragePooling2D(pool_size=kernel_size, strides=strides, padding='same')
         elif method == 'linear':
-            self.proj = None
+            self.proj = layers.Dense(dim)
+            # self.proj = None
         else:
             raise ValueError(f"Unknown method: {method}")
         
     def call(self, inputs):
         if self.method == 'dw_bn':
+            # 確保輸入張量的維度為 4
+            if len(inputs.shape) == 3:
+                inputs = tf.expand_dims(inputs, axis=-1)
+
             x = self.conv(inputs)
             x = self.bn(x)
         elif self.method == 'avg':
@@ -101,9 +106,7 @@ class ConvAttention(layers.Layer):
 
         # 初始化 cls_token
         if with_cls_token:
-            self.cls_token = self.add_weight(shape=(1, 1, dim), initializer='zeros', trainable=True, name='cls_token')
-        else:
-            self.cls_token = None
+            self.cls_token = self.add_weight(shape=(1, 1, 1, dim), initializer='zeros', trainable=True, name='cls_token')
 
         # 創建Q、K、V的卷積投影
         self.q_proj = Projection(dim, kernel_size, strides, padding, 'linear' if qkv_method == 'avg' else qkv_method, name='q_proj')
@@ -177,51 +180,106 @@ class ConvAttention(layers.Layer):
     #     #     output = tf.concat([cls_token, output], axis=1)  # 將 cls_token 重新連接到輸出
 
     #     return output
-    def call(self, inputs):
-        if self.with_cls_token:
-            cls_token = tf.tile(tf.expand_dims(self.cls_token, axis=0), [tf.shape(inputs)[0], 1, 1, 1])  # 添加批次維度並擴展
-            cls_token = tf.reshape(cls_token, [tf.shape(inputs)[0], 1, 1, self.dim])  # 調整 cls_token 的形狀
+    
+    # def call(self, inputs):
+    #     if self.with_cls_token:
+    #         cls_token = tf.tile(tf.expand_dims(self.cls_token, axis=0), [tf.shape(inputs)[0], 1, 1, 1])  # 添加批次維度並擴展
+    #         cls_token = tf.reshape(cls_token, [tf.shape(inputs)[0], 1, 1, self.dim])  # 調整 cls_token 的形狀
         
-            # 計算 query, key, value
-            q = self.q_proj(inputs)
-            k = self.k_proj(inputs)
-            v = self.v_proj(inputs)
+    #         # 計算 query, key, value
+    #         q = self.q_proj(inputs)
+    #         k = self.k_proj(inputs)
+    #         v = self.v_proj(inputs)
             
-            _, h, w, c = q.shape
-            q = tf.reshape(q, [-1, h * w, c])
-            k = tf.reshape(k, [-1, h * w, c])
-            v = tf.reshape(v, [-1, h * w, c])
+    #         _, h, w, c = q.shape
+    #         q = tf.reshape(q, [-1, h * w, c])
+    #         k = tf.reshape(k, [-1, h * w, c])
+    #         v = tf.reshape(v, [-1, h * w, c])
             
-            q = tf.concat([cls_token, q], axis=1)
-            k = tf.concat([cls_token, k], axis=1)
-            v = tf.concat([cls_token, v], axis=1)
+    #         q = tf.concat([cls_token, q], axis=1)
+    #         k = tf.concat([cls_token, k], axis=1)
+    #         v = tf.concat([cls_token, v], axis=1)
+    #     else:
+    #         # 計算 query, key, value
+    #         q = self.q_proj(inputs)
+    #         k = self.k_proj(inputs)
+    #         v = self.v_proj(inputs)
+            
+    #         _, h, w, c = q.shape
+    #         q = tf.reshape(q, [-1, h * w, c])
+    #         k = tf.reshape(k, [-1, h * w, c])
+    #         v = tf.reshape(v, [-1, h * w, c])
+
+    #     # 注意力機制操作
+    #     attn_output = self.attention(q, v, k)
+    #     attn_output = self.attn_dropout(attn_output)
+
+    #     if self.with_cls_token:
+    #         cls_token, attn_output = tf.split(attn_output, [1, h * w], axis=1)
+    #         cls_token = tf.reshape(cls_token, [-1, 1, 1, self.dim])  # 調整 cls_token 的形狀
+    #         attn_output = tf.reshape(attn_output, [-1, h, w, c])
+    #     else:
+    #         attn_output = tf.reshape(attn_output, [-1, h, w, c])
+
+    #     # 線性變換並應用dropout
+    #     output = self.proj(attn_output)
+    #     output = self.proj_dropout(output)
+
+    #     return output
+        
+    def call(self, inputs):
+        batch_size = tf.shape(inputs)[0]
+        height = tf.shape(inputs)[1]
+        width = tf.shape(inputs)[2]
+        num_channels = tf.shape(inputs)[3]
+
+        if self.with_cls_token:
+            cls_tokens = tf.tile(self.cls_token, [batch_size, 1, 1, 1])
+            cls_tokens = tf.reshape(cls_tokens, [batch_size, 1, self.dim])
+            
+            inputs = tf.reshape(inputs, [batch_size, height * width, num_channels])
+            inputs = tf.concat([cls_tokens, inputs], axis=1)
         else:
-            # 計算 query, key, value
-            q = self.q_proj(inputs)
-            k = self.k_proj(inputs)
-            v = self.v_proj(inputs)
+            inputs = tf.reshape(inputs, [batch_size, height * width, num_channels])
             
-            _, h, w, c = q.shape
-            q = tf.reshape(q, [-1, h * w, c])
-            k = tf.reshape(k, [-1, h * w, c])
-            v = tf.reshape(v, [-1, h * w, c])
+        # 計算 query, key, value
+        # 執行卷積投影
+        q = self.q_proj(inputs)
+        k = self.k_proj(inputs)
+        v = self.v_proj(inputs)
+
+        # _, h, w, c = q.shape
+        # q = tf.reshape(q, [-1, h * w, c])
+        # k = tf.reshape(k, [-1, h * w, c])
+        # v = tf.reshape(v, [-1, h * w, c])
+        # 調整 q, k, v 的形狀
+        q = tf.reshape(q, [batch_size, -1, num_channels])
+        k = tf.reshape(k, [batch_size, -1, num_channels])
+        v = tf.reshape(v, [batch_size, -1, num_channels])
 
         # 注意力機制操作
         attn_output = self.attention(q, v, k)
-        attn_output = self.attn_dropout(attn_output)
+        attn_output = self.attn_dropout(attn_output) #（非必要）
+
+        # 將輸出的形狀從 (batch_size, height * width, channels) 轉變回原始的形狀
+        # attn_output = tf.reshape(attn_output, [-1, h, w, c])
 
         if self.with_cls_token:
-            cls_token, attn_output = tf.split(attn_output, [1, h * w], axis=1)
-            cls_token = tf.reshape(cls_token, [-1, 1, 1, self.dim])  # 調整 cls_token 的形狀
-            attn_output = tf.reshape(attn_output, [-1, h, w, c])
+            cls_token, attn_output = tf.split(attn_output, [1, height * width], axis=1)
+            cls_token = tf.reshape(cls_token, [batch_size, 1, 1, num_channels])
+            attn_output = tf.reshape(attn_output, [batch_size, height, width, num_channels])
         else:
-            attn_output = tf.reshape(attn_output, [-1, h, w, c])
+            attn_output = tf.reshape(attn_output, [batch_size, height, width, num_channels])
 
-        # 線性變換並應用dropout
+
+        # 線性變換並應用dropout（非必要）
         output = self.proj(attn_output)
         output = self.proj_dropout(output)
 
-        return output
+        if self.with_cls_token:
+            return output, cls_token
+        else:
+            return output
 
 # def _ntuple(n):
 #     def parse(x):
@@ -288,11 +346,13 @@ class ConvTransformerBlock(layers.Layer):
         self.strides = strides
         self.padding = padding
         self.qkv_method = qkv_method
+        self.with_cls_token = with_cls_token
         self.ffn_dim_factor = ffn_dim_factor  # 控制隱藏層大小的倍數
 
+        # [未加入Dim_in/Dim_out不同]
         self.norm1 = layers.LayerNormalization(epsilon=1e-6)
         self.attn = ConvAttention(dim, num_heads, kernel_size, strides, padding, qkv_method=qkv_method, with_cls_token=with_cls_token)
-        self.norm2 = layers.LayerNormalization(epsilon=1e-6)
+        # self.norm2 = layers.LayerNormalization(epsilon=1e-6)
         
         #  Mlp 實現
         self.ffn = keras.Sequential([
@@ -300,43 +360,50 @@ class ConvTransformerBlock(layers.Layer):
             layers.Dropout(dropout_rate),  # 加入Dropout层
             layers.Dense(dim),
         ])
-        # print("Shape of CTdim:", dim)
-        # 假設 dim 是目標通道數，我們需要確保調整層的輸出通道數也是 dim
-        # self.adjust_channels = layers.Conv2D(dim, kernel_size=1, padding='same', use_bias=False)  # 添加 use_bias=False 以匹配您的其他卷積層設置
         self.output_conv = layers.Conv2D(dim, kernel_size=1)
 
-    def call(self, inputs):
-        x = inputs
-        cls_tokens = None
+    # def call(self, inputs):
+    #     x = self.norm1(inputs)
+    #     attn_output = self.attn(x)
+    #     x = attn_output + inputs
+
+    #     # # 檢查並調整通道數
+    #     # if attn_output.shape[-1] != inputs.shape[-1]:
+    #     #     adjusted_inputs = self.adjust_channels(inputs)
+    #     # else:
+    #     #     adjusted_inputs = inputs
+
+    #     # x = attn_output + adjusted_inputs  # 現在形狀相匹配，可以相加
+
+    #     y = self.norm2(x)
+    #     # y = self.ffn(y)
+    #     ffn_output = self.ffn(y)
+    #     ffn_output = self.output_conv(ffn_output) # 調整 FFN 輸出維度
+    #     # ffn_output = tf.reshape(ffn_output, tf.shape(x))  # 使用 tf.reshape 調整 FFN 輸出維度
+    #     return x + ffn_output
         
-        if self.attn.with_cls_token:
-            cls_tokens = tf.tile(self.attn.cls_token, [tf.shape(x)[0], 1, 1])
-            x = tf.reshape(x, [tf.shape(x)[0], -1, self.dim])  # 調整 x 的形狀
-            x = tf.concat([cls_tokens, x], axis=1)
-
+    def call(self, inputs):
         x = self.norm1(inputs)
-        attn_output = self.attn(x)
-
-        if self.attn.with_cls_token:
-            cls_tokens, attn_output = tf.split(attn_output, [1, tf.shape(attn_output)[1] - 1], axis=1)
-            attn_output = tf.reshape(attn_output, [tf.shape(attn_output)[0], inputs.shape[1], inputs.shape[2], self.dim])  # 將 attn_output 的形狀還原
-
+        if self.with_cls_token:
+            attn_output, cls_token = self.attn(x)
+        else:
+            attn_output = self.attn(x)
         x = attn_output + inputs
 
-        # # 檢查並調整通道數
-        # if attn_output.shape[-1] != inputs.shape[-1]:
-        #     adjusted_inputs = self.adjust_channels(inputs)
-        # else:
-        #     adjusted_inputs = inputs
+        # [未加入DropPath]
 
-        # x = attn_output + adjusted_inputs  # 現在形狀相匹配，可以相加
-
-        y = self.norm2(x)
-        # y = self.ffn(y)
-        ffn_output = self.ffn(y)
+        # y = self.norm2(x)
+        # ffn_output = self.ffn(y)
+        ffn_output = self.ffn(x)
         ffn_output = self.output_conv(ffn_output) # 調整 FFN 輸出維度
-        # ffn_output = tf.reshape(ffn_output, tf.shape(x))  # 使用 tf.reshape 調整 FFN 輸出維度
-        return x + ffn_output
+        
+        output = x + ffn_output
+
+        if self.with_cls_token:
+            # return output, cls_token
+            return output
+        else:
+            return output
 
 # 建立CvT模型
 def create_cvt_model(image_height, image_width, num_channels, proc_dim, num_classes):
