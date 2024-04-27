@@ -13,9 +13,15 @@ from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 # 提取不同頻率
-# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 # frequencies = ['400HZ_Pcv']
-frequencies = ['50HZ_μa']
+# frequencies = ['50HZ_μa']
+
+# 投影方式 (dw_bn/avg/linear)
+projection_method = 'dw_bn'
+
+# cls_token 是否打開 (True/False)
+cls_token_switch = False
 
 # 定義範圍
 group_start = 1
@@ -53,12 +59,14 @@ class Projection(layers.Layer):
         elif method == 'avg':
             self.avg_pool = layers.AveragePooling2D(pool_size=kernel_size, strides=strides, padding='same')
         elif method == 'linear':
-            self.proj = None
+            self.proj = layers.Dense(dim)
+            # self.proj = None
         else:
             raise ValueError(f"Unknown method: {method}")
         
     def call(self, inputs):
         if self.method == 'dw_bn':
+            # 確保輸入 DepthwiseConv2D 張量的維度為 4
             x = self.conv(inputs)
             x = self.bn(x)
         elif self.method == 'avg':
@@ -73,7 +81,7 @@ class Projection(layers.Layer):
 
 # 定義 ConvAttention 層
 class ConvAttention(layers.Layer):
-    def __init__(self, dim, num_heads, kernel_size, strides, padding, qkv_method='dw_bn', attn_drop=0.1, proj_drop=0.1, name=None):
+    def __init__(self, dim, num_heads, kernel_size, strides, padding, qkv_method='dw_bn', attn_drop=0.1, proj_drop=0.1, with_cls_token=True, name=None):
         super().__init__(name=name)
         self.dim = dim
         self.num_heads = num_heads
@@ -81,6 +89,11 @@ class ConvAttention(layers.Layer):
         self.strides = strides
         self.padding = padding
         self.qkv_method = qkv_method
+        self.with_cls_token = with_cls_token
+
+        # # 初始化 cls_token
+        # if with_cls_token:
+        #     self.cls_token = self.add_weight(shape=(1, 1, 1, dim), initializer='zeros', trainable=True, name='cls_token') # 四維度符合圖像處理
 
         # 創建Q、K、V的卷積投影
         self.q_proj = Projection(dim, kernel_size, strides, padding, 'linear' if qkv_method == 'avg' else qkv_method, name='q_proj')
@@ -99,46 +112,58 @@ class ConvAttention(layers.Layer):
         self.attn_dropout = layers.Dropout(attn_drop)
         self.proj_dropout = layers.Dropout(proj_drop)
         self.proj = layers.Dense(dim)
+        
+    def call(self, inputs, height, width):
+        batch_size = tf.shape(inputs)[0]
+        num_channels = tf.shape(inputs)[2]
+        
+        if self.with_cls_token:
+            cls_tokens, inputs = tf.split(inputs, [1, height * width], axis=1)
+            inputs = tf.reshape(inputs, [batch_size, height, width, num_channels])
+            # cls_token = tf.reshape(cls_token, [batch_size, 1, 1, num_channels])
+        else:
+            inputs = tf.reshape(inputs, [batch_size, height, width, num_channels])
+            
 
-    def call(self, inputs):
-        # print("留言密碼測試")
-        # print("Shape of inputs:", inputs.shape)
         # 計算 query, key, value
         # 執行卷積投影
         q = self.q_proj(inputs)
         k = self.k_proj(inputs)
         v = self.v_proj(inputs)
 
-        # 執行線性投影（非必要）
-        q = self.proj_q(q)
-        k = self.proj_k(k)
-        v = self.proj_v(v)
+        if self.with_cls_token:
+            # cls_tokens = tf.tile(self.cls_token, [batch_size, 1, 1, 1])
+            # print("cls_tokens:",cls_tokens.shape)
+            # cls_tokens = tf.reshape(cls_tokens, [batch_size, 1, self.dim])
+            
+            # 確保輸入 attention 張量的維度為 3
+            q = tf.reshape(q, [batch_size, height * width, num_channels])
+            k = tf.reshape(k, [batch_size, height * width, num_channels])
+            v = tf.reshape(v, [batch_size, height * width, num_channels])
 
-        # # print 語句來印出形狀
-        # print("Shape of q:", q.shape)
-        # print("Shape of k:", k.shape)
-        # print("Shape of v:", v.shape)
+            # 把 cls_tokens 串接到 qkv 之前
+            q = tf.concat([cls_tokens, q], axis=1)
+            k = tf.concat([cls_tokens, k], axis=1)
+            v = tf.concat([cls_tokens, v], axis=1)
+            # print("進入cls_token！")
+        else:
+            # 確保輸入 attention 張量的維度為 3
+            q = tf.reshape(q, [batch_size, height * width, num_channels])
+            k = tf.reshape(k, [batch_size, height * width, num_channels])
+            v = tf.reshape(v, [batch_size, height * width, num_channels])
+            # print("不進入cls_token！")
 
-        _, h, w, c = q.shape
-        # print("Before reshape - h:", h, ", w:", w, ", c:", c)
-        q = tf.reshape(q, [-1, h * w, c])
-        k = tf.reshape(k, [-1, h * w, c])
-        v = tf.reshape(v, [-1, h * w, c])
-
-        # # 重塑操作後印出形狀
-        # print("After reshape - Shape of q:", q.shape)
-        # print("After reshape - Shape of k:", k.shape)
-        # print("After reshape - Shape of v:", v.shape)
-
+        
         # 注意力機制操作
         attn_output = self.attention(q, v, k)
-        # print("Shape of attn_output:", attn_output.shape)
-        attn_output = self.attn_dropout(attn_output) # （非必要）
+        attn_output = self.attn_dropout(attn_output) #（非必要）
 
-        # 將輸出的形狀從 (batch_size, height * width, channels) 轉變回原始的形狀
-        attn_output = tf.reshape(attn_output, [-1, h, w, c])
-        # 重塑回原始形狀後印出形狀
-        # print("After reshape back - Shape of attn_output:", attn_output.shape)
+        # if self.with_cls_token:
+        #     cls_token, attn_output = tf.split(attn_output, [1, height * width], axis=1)
+        #     cls_token = tf.reshape(cls_token, [batch_size, 1, 1, num_channels])
+        #     attn_output = tf.reshape(attn_output, [batch_size, height, width, num_channels])
+        # else:
+        #     attn_output = tf.reshape(attn_output, [batch_size, height, width, num_channels])
 
         # 線性變換並應用dropout（非必要）
         output = self.proj(attn_output)
@@ -201,22 +226,9 @@ class ConvEmbed(layers.Layer):
         })
         return config
 
-
-# # 定義 ConvBlock 層
-# class ConvBlock(layers.Layer):
-#     def __init__(self, filters, kernel_size, strides, name=None):
-#         super().__init__(name=name)
-#         self.conv = layers.Conv2D(filters, kernel_size, strides=strides, padding='same', activation='relu')
-#         self.norm = layers.LayerNormalization(epsilon=1e-6)
-
-#     def call(self, inputs):
-#         x = self.conv(inputs)
-#         x = self.norm(x)
-#         return x
-
 # 定義 ConvTransformerBlock 層
 class ConvTransformerBlock(layers.Layer):
-    def __init__(self, dim, num_heads, kernel_size, strides, padding, qkv_method='dw_bn', ffn_dim_factor=4, dropout_rate=0.1, name=None):
+    def __init__(self, dim, num_heads, kernel_size, strides, padding, qkv_method='dw_bn', ffn_dim_factor=4, dropout_rate=0.1, with_cls_token=True, name=None):
         super().__init__(name=name)
         self.dim = dim
         self.num_heads = num_heads
@@ -224,41 +236,58 @@ class ConvTransformerBlock(layers.Layer):
         self.strides = strides
         self.padding = padding
         self.qkv_method = qkv_method
+        self.with_cls_token = with_cls_token
         self.ffn_dim_factor = ffn_dim_factor  # 控制隱藏層大小的倍數
 
+        # 初始化 cls_token
+        if with_cls_token:
+            self.cls_token = self.add_weight(shape=(1, 1, 1, dim), initializer='zeros', trainable=True, name='cls_token') # 四維度符合圖像處理
+
+        # [未加入Dim_in/Dim_out不同]
         self.norm1 = layers.LayerNormalization(epsilon=1e-6)
-        self.attn = ConvAttention(dim, num_heads, kernel_size, strides, padding, qkv_method=qkv_method)
-        self.norm2 = layers.LayerNormalization(epsilon=1e-6)
+        self.attn = ConvAttention(dim, num_heads, kernel_size, strides, padding, qkv_method=qkv_method, with_cls_token=with_cls_token)
+        # self.norm2 = layers.LayerNormalization(epsilon=1e-6)
+        
         #  Mlp 實現
         self.ffn = keras.Sequential([
-            layers.Dense(dim * self.ffn_dim_factor, activation=tf.nn.gelu),  # 可配置的隐藏层大小
-            layers.Dropout(dropout_rate),  # 加入Dropout层
+            layers.Dense(dim * self.ffn_dim_factor, activation=tf.nn.gelu),  # 可配置的隱藏層大小
+            layers.Dropout(dropout_rate),  # 加入Dropout層
             layers.Dense(dim),
+            layers.Dropout(dropout_rate),  # 加入Dropout層
         ])
-        # print("Shape of CTdim:", dim)
-        # 假設 dim 是目標通道數，我們需要確保調整層的輸出通道數也是 dim
-        # self.adjust_channels = layers.Conv2D(dim, kernel_size=1, padding='same', use_bias=False)  # 添加 use_bias=False 以匹配您的其他卷積層設置
         self.output_conv = layers.Conv2D(dim, kernel_size=1)
-
+        
     def call(self, inputs):
+        batch_size = tf.shape(inputs)[0]
+        height = tf.shape(inputs)[1]
+        width = tf.shape(inputs)[2]
+        num_channels = tf.shape(inputs)[3]
+
+        if self.with_cls_token:
+            cls_tokens = tf.tile(self.cls_token, [batch_size, 1, 1, 1])
+            cls_tokens = tf.reshape(cls_tokens, [batch_size, 1, num_channels])
+            inputs = tf.reshape(inputs, [batch_size, height * width, num_channels])
+            inputs = tf.concat([cls_tokens, inputs], axis=1)
+        else:
+            inputs = tf.reshape(inputs, [batch_size, height * width, num_channels])
+        
         x = self.norm1(inputs)
-        attn_output = self.attn(x)
+        attn_output = self.attn(x, height, width)
         x = attn_output + inputs
 
-        # # 檢查並調整通道數
-        # if attn_output.shape[-1] != inputs.shape[-1]:
-        #     adjusted_inputs = self.adjust_channels(inputs)
-        # else:
-        #     adjusted_inputs = inputs
+        # [未加入DropPath]
 
-        # x = attn_output + adjusted_inputs  # 現在形狀相匹配，可以相加
-
-        y = self.norm2(x)
-        # y = self.ffn(y)
+        y = self.norm1(x)
         ffn_output = self.ffn(y)
-        ffn_output = self.output_conv(ffn_output) # 調整 FFN 輸出維度
-        # ffn_output = tf.reshape(ffn_output, tf.shape(x))  # 使用 tf.reshape 調整 FFN 輸出維度
-        return x + ffn_output
+        
+        output = x + ffn_output
+
+        if self.with_cls_token:
+            cls_tokens, output = tf.split(output, [1, height * width], axis=1)
+
+        output = tf.reshape(output, [batch_size, height, width, num_channels])
+
+        return output
 
 # 建立CvT模型
 def create_cvt_model(image_height, image_width, num_channels, proc_dim, num_classes):
@@ -269,15 +298,15 @@ def create_cvt_model(image_height, image_width, num_channels, proc_dim, num_clas
 
     # Stage 1
     x = ConvEmbed(embed_dim=64, patch_size=7, stride=4, norm_layer=layers.LayerNormalization)(x)
-    x = ConvTransformerBlock(64, num_heads=1, kernel_size=3, strides=1, padding='same', qkv_method='dw_bn', name='stage1_transformer')(x)
+    x = ConvTransformerBlock(64, num_heads=1, kernel_size=3, strides=1, padding='same', qkv_method=projection_method, with_cls_token=cls_token_switch, name='stage1_transformer')(x)
 
     # Stage 2
     x = ConvEmbed(embed_dim=128, patch_size=3, stride=2, norm_layer=layers.LayerNormalization)(x)
-    x = ConvTransformerBlock(128, num_heads=2, kernel_size=3, strides=1, padding='same', qkv_method='dw_bn', name='stage2_transformer')(x)
+    x = ConvTransformerBlock(128, num_heads=2, kernel_size=3, strides=1, padding='same', qkv_method=projection_method, with_cls_token=cls_token_switch, name='stage2_transformer')(x)
 
     # Stage 3
     x = ConvEmbed(embed_dim=256, patch_size=3, stride=2, norm_layer=layers.LayerNormalization)(x)
-    x = ConvTransformerBlock(256, num_heads=4, kernel_size=3, strides=1, padding='same', qkv_method='dw_bn', name='stage3_transformer')(x)
+    x = ConvTransformerBlock(256, num_heads=4, kernel_size=3, strides=1, padding='same', qkv_method=projection_method, with_cls_token=cls_token_switch, name='stage3_transformer')(x)
 
 
     # Global Average Pooling
