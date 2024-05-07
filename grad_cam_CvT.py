@@ -12,7 +12,6 @@ from itertools import repeat
 
 from tensorflow.keras.preprocessing import image
 
-
 import matplotlib.pyplot as plt
 import keras_tuner as kt
 from PIL import Image
@@ -38,6 +37,16 @@ if gpus:
 # frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
 frequencies = ['50HZ_μa']
 
+# 投影方式 (dw_bn/avg/linear)
+projection_method = 'dw_bn'
+
+# cls_token 是否打開 (True/False)
+cls_token_switch = False
+
+# Grad-CAM 熱力圖
+# last_conv_layer_name = 'conv_embed'  # 使用模型的最後一個卷積層名稱
+last_conv_layer_name = 'stage3_transformer'  # 使用模型的最後一個卷積層名稱
+
 # 定義範圍
 group_start = 1
 group_end = 40
@@ -45,7 +54,7 @@ piece_num_start = 1
 piece_num_end = 5
 
 # 定義其他相關範圍或常數
-image_layers = 200  # 每顆影像的層數
+image_layers = 10  # 每顆影像的層數
 
 # 定義圖像的高度、寬度和通道數
 image_height = 128
@@ -85,12 +94,14 @@ class Projection(layers.Layer):
         elif method == 'avg':
             self.avg_pool = layers.AveragePooling2D(pool_size=kernel_size, strides=strides, padding='same')
         elif method == 'linear':
-            self.proj = None
+            self.proj = layers.Dense(dim)
+            # self.proj = None
         else:
             raise ValueError(f"Unknown method: {method}")
         
     def call(self, inputs):
         if self.method == 'dw_bn':
+            # 確保輸入 DepthwiseConv2D 張量的維度為 4
             x = self.conv(inputs)
             x = self.bn(x)
         elif self.method == 'avg':
@@ -105,7 +116,7 @@ class Projection(layers.Layer):
 
 # 定義 ConvAttention 層
 class ConvAttention(layers.Layer):
-    def __init__(self, dim, num_heads, kernel_size, strides, padding, qkv_method='dw_bn', attn_drop=0.1, proj_drop=0.1, name=None):
+    def __init__(self, dim, num_heads, kernel_size, strides, padding, qkv_method='dw_bn', attn_drop=0.1, proj_drop=0.1, with_cls_token=True, name=None):
         super().__init__(name=name)
         self.dim = dim
         self.num_heads = num_heads
@@ -113,6 +124,11 @@ class ConvAttention(layers.Layer):
         self.strides = strides
         self.padding = padding
         self.qkv_method = qkv_method
+        self.with_cls_token = with_cls_token
+
+        # # 初始化 cls_token
+        # if with_cls_token:
+        #     self.cls_token = self.add_weight(shape=(1, 1, 1, dim), initializer='zeros', trainable=True, name='cls_token') # 四維度符合圖像處理
 
         # 創建Q、K、V的卷積投影
         self.q_proj = Projection(dim, kernel_size, strides, padding, 'linear' if qkv_method == 'avg' else qkv_method, name='q_proj')
@@ -131,46 +147,58 @@ class ConvAttention(layers.Layer):
         self.attn_dropout = layers.Dropout(attn_drop)
         self.proj_dropout = layers.Dropout(proj_drop)
         self.proj = layers.Dense(dim)
+        
+    def call(self, inputs, height, width):
+        batch_size = tf.shape(inputs)[0]
+        num_channels = tf.shape(inputs)[2]
+        
+        if self.with_cls_token:
+            cls_tokens, inputs = tf.split(inputs, [1, height * width], axis=1)
+            inputs = tf.reshape(inputs, [batch_size, height, width, num_channels])
+            # cls_token = tf.reshape(cls_token, [batch_size, 1, 1, num_channels])
+        else:
+            inputs = tf.reshape(inputs, [batch_size, height, width, num_channels])
+            
 
-    def call(self, inputs):
-        # print("留言密碼測試")
-        # print("Shape of inputs:", inputs.shape)
         # 計算 query, key, value
         # 執行卷積投影
         q = self.q_proj(inputs)
         k = self.k_proj(inputs)
         v = self.v_proj(inputs)
 
-        # 執行線性投影（非必要）
-        q = self.proj_q(q)
-        k = self.proj_k(k)
-        v = self.proj_v(v)
+        if self.with_cls_token:
+            # cls_tokens = tf.tile(self.cls_token, [batch_size, 1, 1, 1])
+            # print("cls_tokens:",cls_tokens.shape)
+            # cls_tokens = tf.reshape(cls_tokens, [batch_size, 1, self.dim])
+            
+            # 確保輸入 attention 張量的維度為 3
+            q = tf.reshape(q, [batch_size, height * width, num_channels])
+            k = tf.reshape(k, [batch_size, height * width, num_channels])
+            v = tf.reshape(v, [batch_size, height * width, num_channels])
 
-        # # print 語句來印出形狀
-        # print("Shape of q:", q.shape)
-        # print("Shape of k:", k.shape)
-        # print("Shape of v:", v.shape)
+            # 把 cls_tokens 串接到 qkv 之前
+            q = tf.concat([cls_tokens, q], axis=1)
+            k = tf.concat([cls_tokens, k], axis=1)
+            v = tf.concat([cls_tokens, v], axis=1)
+            # print("進入cls_token！")
+        else:
+            # 確保輸入 attention 張量的維度為 3
+            q = tf.reshape(q, [batch_size, height * width, num_channels])
+            k = tf.reshape(k, [batch_size, height * width, num_channels])
+            v = tf.reshape(v, [batch_size, height * width, num_channels])
+            # print("不進入cls_token！")
 
-        _, h, w, c = q.shape
-        # print("Before reshape - h:", h, ", w:", w, ", c:", c)
-        q = tf.reshape(q, [-1, h * w, c])
-        k = tf.reshape(k, [-1, h * w, c])
-        v = tf.reshape(v, [-1, h * w, c])
-
-        # # 重塑操作後印出形狀
-        # print("After reshape - Shape of q:", q.shape)
-        # print("After reshape - Shape of k:", k.shape)
-        # print("After reshape - Shape of v:", v.shape)
-
+        
         # 注意力機制操作
         attn_output = self.attention(q, v, k)
-        # print("Shape of attn_output:", attn_output.shape)
-        attn_output = self.attn_dropout(attn_output) # （非必要）
+        attn_output = self.attn_dropout(attn_output) #（非必要）
 
-        # 將輸出的形狀從 (batch_size, height * width, channels) 轉變回原始的形狀
-        attn_output = tf.reshape(attn_output, [-1, h, w, c])
-        # 重塑回原始形狀後印出形狀
-        # print("After reshape back - Shape of attn_output:", attn_output.shape)
+        # if self.with_cls_token:
+        #     cls_token, attn_output = tf.split(attn_output, [1, height * width], axis=1)
+        #     cls_token = tf.reshape(cls_token, [batch_size, 1, 1, num_channels])
+        #     attn_output = tf.reshape(attn_output, [batch_size, height, width, num_channels])
+        # else:
+        #     attn_output = tf.reshape(attn_output, [batch_size, height, width, num_channels])
 
         # 線性變換並應用dropout（非必要）
         output = self.proj(attn_output)
@@ -233,22 +261,9 @@ class ConvEmbed(layers.Layer):
         })
         return config
 
-
-# # 定義 ConvBlock 層
-# class ConvBlock(layers.Layer):
-#     def __init__(self, filters, kernel_size, strides, name=None):
-#         super().__init__(name=name)
-#         self.conv = layers.Conv2D(filters, kernel_size, strides=strides, padding='same', activation='relu')
-#         self.norm = layers.LayerNormalization(epsilon=1e-6)
-
-#     def call(self, inputs):
-#         x = self.conv(inputs)
-#         x = self.norm(x)
-#         return x
-
 # 定義 ConvTransformerBlock 層
 class ConvTransformerBlock(layers.Layer):
-    def __init__(self, dim, num_heads, kernel_size, strides, padding, qkv_method='dw_bn', ffn_dim_factor=4, dropout_rate=0.1, name=None):
+    def __init__(self, dim, num_heads, kernel_size, strides, padding, qkv_method='dw_bn', ffn_dim_factor=4, dropout_rate=0.1, with_cls_token=True, name=None):
         super().__init__(name=name)
         self.dim = dim
         self.num_heads = num_heads
@@ -256,41 +271,58 @@ class ConvTransformerBlock(layers.Layer):
         self.strides = strides
         self.padding = padding
         self.qkv_method = qkv_method
+        self.with_cls_token = with_cls_token
         self.ffn_dim_factor = ffn_dim_factor  # 控制隱藏層大小的倍數
 
+        # 初始化 cls_token
+        if with_cls_token:
+            self.cls_token = self.add_weight(shape=(1, 1, 1, dim), initializer='zeros', trainable=True, name='cls_token') # 四維度符合圖像處理
+
+        # [未加入Dim_in/Dim_out不同]
         self.norm1 = layers.LayerNormalization(epsilon=1e-6)
-        self.attn = ConvAttention(dim, num_heads, kernel_size, strides, padding, qkv_method=qkv_method)
-        self.norm2 = layers.LayerNormalization(epsilon=1e-6)
+        self.attn = ConvAttention(dim, num_heads, kernel_size, strides, padding, qkv_method=qkv_method, with_cls_token=with_cls_token)
+        # self.norm2 = layers.LayerNormalization(epsilon=1e-6)
+        
         #  Mlp 實現
         self.ffn = keras.Sequential([
-            layers.Dense(dim * self.ffn_dim_factor, activation=tf.nn.gelu),  # 可配置的隐藏层大小
-            layers.Dropout(dropout_rate),  # 加入Dropout层
+            layers.Dense(dim * self.ffn_dim_factor, activation=tf.nn.gelu),  # 可配置的隱藏層大小
+            layers.Dropout(dropout_rate),  # 加入Dropout層
             layers.Dense(dim),
+            layers.Dropout(dropout_rate),  # 加入Dropout層
         ])
-        # print("Shape of CTdim:", dim)
-        # 假設 dim 是目標通道數，我們需要確保調整層的輸出通道數也是 dim
-        # self.adjust_channels = layers.Conv2D(dim, kernel_size=1, padding='same', use_bias=False)  # 添加 use_bias=False 以匹配您的其他卷積層設置
         self.output_conv = layers.Conv2D(dim, kernel_size=1)
-
+        
     def call(self, inputs):
+        batch_size = tf.shape(inputs)[0]
+        height = tf.shape(inputs)[1]
+        width = tf.shape(inputs)[2]
+        num_channels = tf.shape(inputs)[3]
+
+        if self.with_cls_token:
+            cls_tokens = tf.tile(self.cls_token, [batch_size, 1, 1, 1])
+            cls_tokens = tf.reshape(cls_tokens, [batch_size, 1, num_channels])
+            inputs = tf.reshape(inputs, [batch_size, height * width, num_channels])
+            inputs = tf.concat([cls_tokens, inputs], axis=1)
+        else:
+            inputs = tf.reshape(inputs, [batch_size, height * width, num_channels])
+        
         x = self.norm1(inputs)
-        attn_output = self.attn(x)
+        attn_output = self.attn(x, height, width)
         x = attn_output + inputs
 
-        # # 檢查並調整通道數
-        # if attn_output.shape[-1] != inputs.shape[-1]:
-        #     adjusted_inputs = self.adjust_channels(inputs)
-        # else:
-        #     adjusted_inputs = inputs
+        # [未加入DropPath]
 
-        # x = attn_output + adjusted_inputs  # 現在形狀相匹配，可以相加
-
-        y = self.norm2(x)
-        # y = self.ffn(y)
+        y = self.norm1(x)
         ffn_output = self.ffn(y)
-        ffn_output = self.output_conv(ffn_output) # 調整 FFN 輸出維度
-        # ffn_output = tf.reshape(ffn_output, tf.shape(x))  # 使用 tf.reshape 調整 FFN 輸出維度
-        return x + ffn_output
+        
+        output = x + ffn_output
+
+        if self.with_cls_token:
+            cls_tokens, output = tf.split(output, [1, height * width], axis=1)
+
+        output = tf.reshape(output, [batch_size, height, width, num_channels])
+
+        return output
 
 # 建立CvT模型
 def create_cvt_model(image_height, image_width, num_channels, proc_dim, num_classes):
@@ -301,15 +333,15 @@ def create_cvt_model(image_height, image_width, num_channels, proc_dim, num_clas
 
     # Stage 1
     x = ConvEmbed(embed_dim=64, patch_size=7, stride=4, norm_layer=layers.LayerNormalization)(x)
-    x = ConvTransformerBlock(64, num_heads=1, kernel_size=3, strides=1, padding='same', qkv_method='dw_bn', name='stage1_transformer')(x)
+    x = ConvTransformerBlock(64, num_heads=1, kernel_size=3, strides=1, padding='same', qkv_method=projection_method, with_cls_token=cls_token_switch, name='stage1_transformer')(x)
 
     # Stage 2
     x = ConvEmbed(embed_dim=128, patch_size=3, stride=2, norm_layer=layers.LayerNormalization)(x)
-    x = ConvTransformerBlock(128, num_heads=2, kernel_size=3, strides=1, padding='same', qkv_method='dw_bn', name='stage2_transformer')(x)
+    x = ConvTransformerBlock(128, num_heads=2, kernel_size=3, strides=1, padding='same', qkv_method=projection_method, with_cls_token=cls_token_switch, name='stage2_transformer')(x)
 
     # Stage 3
     x = ConvEmbed(embed_dim=256, patch_size=3, stride=2, norm_layer=layers.LayerNormalization)(x)
-    x = ConvTransformerBlock(256, num_heads=4, kernel_size=3, strides=1, padding='same', qkv_method='dw_bn', name='stage3_transformer')(x)
+    x = ConvTransformerBlock(256, num_heads=4, kernel_size=3, strides=1, padding='same', qkv_method=projection_method, with_cls_token=cls_token_switch, name='stage3_transformer')(x)
 
 
     # Global Average Pooling
@@ -399,7 +431,7 @@ def preprocess_data(excel_data, excel_process, group_start, group_end, piece_num
     return labels_dict, proc_dict_scaled, images, valid_dict, count
 
 # Grad-CAM 函數
-def make_gradcam_heatmap(img_array, proc_array, model, last_conv_layer_name, pred_index=None, batch_size=4):
+def make_gradcam_heatmap(img_array, proc_array, model, last_conv_layer_name, pred_index=None, batch_size=1):
     img_dataset = tf.data.Dataset.from_tensor_slices((img_array, proc_array))
     img_dataset = img_dataset.batch(batch_size)
 
@@ -408,42 +440,13 @@ def make_gradcam_heatmap(img_array, proc_array, model, last_conv_layer_name, pre
     gpu_memory_usage = tf.config.experimental.get_memory_usage("/gpu:0")
     print(f"GPU memory usage 1: {gpu_memory_usage} bytes")
 
+    # 創建一個新的模型，輸出最後卷積層的輸出和最終模型的預測
+    grad_model = tf.keras.models.Model(
+        inputs=[model.inputs],
+        outputs=[model.get_layer(last_conv_layer_name).output, model.output]
+    )
+
     heatmaps = []
-    # for img_batch, proc_batch in tqdm(img_dataset, desc="處理 Grad-CAM 圖像進度"):
-    #     # 調整輸入張量的形狀
-    #     if len(img_batch.shape) == 3:
-    #         img_batch = tf.expand_dims(img_batch, axis=-1)
-        
-    #     # 轉換數據類型為 float32
-    #     img_batch = tf.cast(img_batch, tf.float16)
-    #     proc_batch = tf.cast(proc_batch, tf.float16)
-
-    #     # grad_model 不僅輸出原始模型的最終輸出，也輸出指定的一個中間層的輸出。
-    #     grad_model = tf.keras.models.Model(
-    #         model.inputs, [model.get_layer(last_conv_layer_name).output, model.output]
-    #     )
-        
-    #     # TensorFlow 提供的一種自動微分函式，用於記錄在其作用域下執行的所有操作的梯度。
-    #     with tf.GradientTape() as tape:
-    #         last_conv_layer_output, preds = grad_model([img_batch, proc_batch])
-    #         if pred_index is None:
-    #             pred_index = tf.argmax(preds[0])
-    #         class_channel = preds[:, pred_index]
-
-    #     grads = tape.gradient(class_channel, last_conv_layer_output)
-    #     pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-    #     last_conv_layer_output = last_conv_layer_output[0]
-    #     heatmap = last_conv_layer_output @ pooled_grads[..., tf.newaxis]
-    #     heatmap = tf.squeeze(heatmap)
-
-    #     # 對熱力圖進行後處理，使其更適合可視化
-    #     heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
-    #     heatmaps.append(heatmap.numpy())
-
-    # # 將所有熱力圖堆疊到一個數組中
-    # heatmaps = np.concatenate(heatmaps, axis=0)
-    # return heatmaps
-
 
     for img_batch, proc_batch in tqdm(img_dataset, desc="處理 Grad-CAM 圖像進度"):
         # 調整輸入張量的形狀
@@ -451,23 +454,18 @@ def make_gradcam_heatmap(img_array, proc_array, model, last_conv_layer_name, pre
             img_batch = tf.expand_dims(img_batch, axis=-1)
         
         # 轉換數據類型為 float32
-        img_batch = tf.cast(img_batch, tf.float16)
-        proc_batch = tf.cast(proc_batch, tf.float16)
-
-        # 創建一個新的模型，輸出最後卷積層的輸出和最終模型的預測
-        grad_model = tf.keras.models.Model(
-            inputs=[model.inputs],
-            outputs=[model.get_layer(last_conv_layer_name).output, model.output]
-        )
+        img_batch = tf.cast(img_batch, tf.float32)
+        proc_batch = tf.cast(proc_batch, tf.float32)
         
         with tf.GradientTape() as tape:
             # 使用 grad_model 進行預測，這會提供我們需要的中間層輸出和最終預測
             last_conv_layer_output, predictions = grad_model([img_batch, proc_batch])
-            tape.watch(last_conv_layer_output)  # 確保這里的 last_conv_layer_output 是被監控的張量
+            # tape.watch(last_conv_layer_output)  # 確保這里的 last_conv_layer_output 是被監控的張量
 
             # 假設是回歸問題，我們關注於模型的輸出
             # predicted = predictions[..., 0]  # 取決於你的模型輸出結構
             predicted = predictions[:, 0]
+            # print("predicted :", predicted)
 
         # 計算關於最後卷積層輸出的梯度
         grads = tape.gradient(predicted, last_conv_layer_output)
@@ -476,20 +474,23 @@ def make_gradcam_heatmap(img_array, proc_array, model, last_conv_layer_name, pre
         pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
 
         # 打印预测和梯度
-        print("Predictions:", predictions.numpy())
-        print("Gradients shape:", grads.shape)
-        print("Pooled gradients:", pooled_grads.numpy())
+        # print("Predictions:", predictions.numpy())
+        # print("Gradients shape:", grads.shape)
+        # print("Pooled gradients:", pooled_grads.numpy())
 
-        for i in range(predictions.shape[0]):
-            # 使用權重加權最後的卷積層特征圖，以生成熱力圖
-            heatmap = tf.reduce_sum(pooled_grads * last_conv_layer_output[i], axis=-1)
-            heatmap = tf.squeeze(heatmap)
+        # 使用權重加權最後的卷積層特征圖，以生成熱力圖
+        heatmap = tf.reduce_sum(pooled_grads * last_conv_layer_output[0], axis=-1)
+        heatmap = tf.squeeze(heatmap)
 
-            # 對熱力圖進行後處理，使其更適合可視化
-            heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
-            heatmaps.append(heatmap.numpy())
+        # 對熱力圖進行後處理，使其更適合可視化（maximum:確保熱力圖中的所有值都是非負值、reduce_max：正規化）
+        heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
+        # print("heatmap :", heatmap.shape)
+        # print("heatmap :", heatmap)
+        heatmaps.append(heatmap.numpy())
+        # print("In heatmaps :", heatmaps)
 
-    heatmaps = np.concatenate(heatmaps, axis=0)
+    heatmaps = np.stack(heatmaps, axis=0)
+    
     # 返回所有熱力圖
     return heatmaps
 
@@ -516,6 +517,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     x_val = np.array(x_val)
     y_val = np.array(y_val)
     proc_val = np.array(proc_val)
+    print("x_val :",x_val.shape)
 
     # 構建模型
     model = create_cvt_model(image_height, image_width, num_channels, proc_dict_scaled.shape[1], num_classes)
@@ -523,16 +525,6 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     
     # 載入模型權重
     model.load_weights(f'Weight/Images & Parameters/cvt_model_weights_{freq}.h5')
-
-    # 生成 Grad-CAM 熱力圖
-    last_conv_layer_name = 'stage3_transformer'  # 使用模型的最後一個卷積層名稱
-    heatmap = make_gradcam_heatmap(x_val, proc_val, model, last_conv_layer_name)
-
-    # 將熱力圖轉換為8位整數格式
-    heatmap = np.uint8(255 * heatmap)
-
-    # 應用顏色映射
-    heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
 
     # 將單通道灰度圖像轉換為三通道圖像
     img_np_color = []
@@ -543,26 +535,46 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
         img_np_color.append(img_color)
     img_np_color = np.array(img_np_color)
 
-    # 將熱力圖調整為原始圖像的大小並應用到原圖
-    heatmap_resized = cv2.resize(heatmap_colored, (x_val.shape[2], x_val.shape[1]))
-    heatmap_resized = np.expand_dims(heatmap_resized, axis=0)
-    heatmap_resized = np.repeat(heatmap_resized, x_val.shape[0], axis=0)
-    superimposed_img = heatmap_resized * 0.4 + img_np_color
+
+
+    # 生成 Grad-CAM 熱力圖
+    # last_conv_layer_name = 'stage1_transformer'  # 使用模型的最後一個卷積層名稱
+    # last_conv_layer_name = 'conv_embed'  # 使用模型的最後一個卷積層名稱
+    heatmaps = make_gradcam_heatmap(x_val, proc_val, model, last_conv_layer_name)
+
+    # 將熱力圖轉換為8位整數格式
+    heatmaps = np.uint8(255 * heatmaps)
+
+    heatmaps_resizeds = []
+    for heatmap in heatmaps:
+        # 應用顏色映射
+        heatmap_colored = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+        # 將熱力圖調整為原始圖像的大小並應用到原圖
+        heatmap_resized = cv2.resize(heatmap_colored, (x_val.shape[2], x_val.shape[1]))
+        # heatmap_resized = cv2.resize(heatmap, (x_val.shape[2], x_val.shape[1]))
+        heatmap_resized = np.expand_dims(heatmap_resized, axis=0)
+        heatmaps_resizeds.append(heatmap_resized)
+    
+    heatmaps_resizeds = np.concatenate(heatmaps_resizeds, axis=0)
+    # print("heatmaps_resizeds :",heatmaps_resizeds.shape)
+    # print("heatmaps_resizeds :",heatmaps_resizeds)
+
+    superimposed_img = heatmaps_resizeds * 0.4 + img_np_color
 
     # 將 superimposed_img 的值範圍縮放到 [0, 255],並轉換為 uint8 類型
     superimposed_img = (superimposed_img / np.max(superimposed_img) * 255.0).astype(np.uint8)
 
-    print("Original Image data type:", img_np_color.dtype)
-    print("Original Image min value:", np.min(img_np_color))
-    print("Original Image max value:", np.max(img_np_color))
+    # print("Original Image data type:", img_np_color.dtype)
+    # print("Original Image min value:", np.min(img_np_color))
+    # print("Original Image max value:", np.max(img_np_color))
 
-    print("Heatmap data type:", heatmap_resized.dtype)
-    print("Heatmap min value:", np.min(heatmap_resized))
-    print("Heatmap max value:", np.max(heatmap_resized))
+    # print("Heatmap data type:", heatmaps_resizeds.dtype)
+    # print("Heatmap min value:", np.min(heatmaps_resizeds))
+    # print("Heatmap max value:", np.max(heatmaps_resizeds))
 
-    print("Superimposed data type:", superimposed_img.dtype)
-    print("Superimposed min value:", np.min(superimposed_img))
-    print("Superimposed max value:", np.max(superimposed_img))
+    # print("Superimposed data type:", superimposed_img.dtype)
+    # print("Superimposed min value:", np.min(superimposed_img))
+    # print("Superimposed max value:", np.max(superimposed_img))
 
 
 
@@ -579,7 +591,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
 
         # 顯示熱力圖
         plt.subplot(1, 3, 2)  # 1列2行的第2個
-        plt.imshow(heatmap_resized[image_index])
+        plt.imshow(heatmaps_resizeds[image_index])
         plt.axis('off')
         plt.title('Heatmap')
 

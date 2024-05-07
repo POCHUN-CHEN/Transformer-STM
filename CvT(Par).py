@@ -7,8 +7,8 @@ import cv2
 
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.callbacks import TensorBoard
-import collections
-from itertools import repeat
+# import collections
+# from itertools import repeat
 
 # 動態記憶體分配
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -36,7 +36,7 @@ frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv']
 projection_method = 'dw_bn'
 
 # cls_token 是否打開 (True/False)
-cls_token_switch = False
+cls_token_switch = True
 
 # 定義範圍
 group_start = 1
@@ -64,6 +64,24 @@ train_epochs = 1000
 excel_data = pd.read_excel('Circle_test.xlsx')
 excel_process = pd.read_excel('Process_parameters.xlsx')
 
+
+# Spec 定義
+spec = {
+    'stages': [
+        {'embed_dim': 64, 'patch_size': 7, 'stride': 4, 'num_heads': 1, 'kernel_size': 3, 'strides': 1, 'qkv_method': 'linear', 'with_cls_token': False},
+        {'embed_dim': 128, 'patch_size': 3, 'stride': 2, 'num_heads': 2, 'kernel_size': 3, 'strides': 1, 'qkv_method': 'linear', 'with_cls_token': False},
+        {'embed_dim': 256, 'patch_size': 3, 'stride': 2, 'num_heads': 4, 'kernel_size': 3, 'strides': 1, 'qkv_method': 'linear', 'with_cls_token': cls_token_switch},
+    ]
+}
+
+# 定義一個提取圖像的高度、寬度和通道數的函數
+def extract_dimensions(x):
+    batch_size = tf.shape(x)[0]
+    height = tf.shape(x)[1]
+    width = tf.shape(x)[2]
+    num_channels = tf.shape(x)[3]
+    return batch_size, height, width, num_channels
+
 # 定義 Projection 層
 class Projection(layers.Layer):
     def __init__(self, dim, kernel_size, strides, padding='same', method='dw_bn', name=None):
@@ -80,8 +98,8 @@ class Projection(layers.Layer):
         elif method == 'avg':
             self.avg_pool = layers.AveragePooling2D(pool_size=kernel_size, strides=strides, padding='same')
         elif method == 'linear':
-            self.proj = layers.Dense(dim)
-            # self.proj = None
+            # self.proj = layers.Dense(dim)
+            self.proj = None
         else:
             raise ValueError(f"Unknown method: {method}")
         
@@ -93,10 +111,8 @@ class Projection(layers.Layer):
         elif self.method == 'avg':
             x = self.avg_pool(inputs)
         elif self.method == 'linear':
-            x = self.proj(inputs)
-
-        # print("留言密碼測試")
-        # print("Projection x:", x.shape)
+            # x = self.proj(inputs)
+            x = inputs
         
         return x
 
@@ -112,16 +128,12 @@ class ConvAttention(layers.Layer):
         self.qkv_method = qkv_method
         self.with_cls_token = with_cls_token
 
-        # # 初始化 cls_token
-        # if with_cls_token:
-        #     self.cls_token = self.add_weight(shape=(1, 1, 1, dim), initializer='zeros', trainable=True, name='cls_token') # 四維度符合圖像處理
-
         # 創建Q、K、V的卷積投影
         self.q_proj = Projection(dim, kernel_size, strides, padding, 'linear' if qkv_method == 'avg' else qkv_method, name='q_proj')
         self.k_proj = Projection(dim, kernel_size, strides, padding, method=qkv_method, name='k_proj')
         self.v_proj = Projection(dim, kernel_size, strides, padding, method=qkv_method, name='v_proj')
 
-        # 創建Q、K、V的線性投影（非必要）
+        # 創建Q、K、V的線性投影
         self.proj_q = layers.Dense(dim)
         self.proj_k = layers.Dense(dim)
         self.proj_v = layers.Dense(dim)
@@ -135,28 +147,23 @@ class ConvAttention(layers.Layer):
         self.proj = layers.Dense(dim)
         
     def call(self, inputs, height, width):
+        # 這邊不能直接取用 input 的 shape ，因為有加入 Cls_token 只能由外部傳入。
         batch_size = tf.shape(inputs)[0]
         num_channels = tf.shape(inputs)[2]
         
         if self.with_cls_token:
             cls_tokens, inputs = tf.split(inputs, [1, height * width], axis=1)
             inputs = tf.reshape(inputs, [batch_size, height, width, num_channels])
-            # cls_token = tf.reshape(cls_token, [batch_size, 1, 1, num_channels])
         else:
             inputs = tf.reshape(inputs, [batch_size, height, width, num_channels])
             
-
         # 計算 query, key, value
         # 執行卷積投影
         q = self.q_proj(inputs)
         k = self.k_proj(inputs)
         v = self.v_proj(inputs)
 
-        if self.with_cls_token:
-            # cls_tokens = tf.tile(self.cls_token, [batch_size, 1, 1, 1])
-            # print("cls_tokens:",cls_tokens.shape)
-            # cls_tokens = tf.reshape(cls_tokens, [batch_size, 1, self.dim])
-            
+        if self.with_cls_token:            
             # 確保輸入 attention 張量的維度為 3
             q = tf.reshape(q, [batch_size, height * width, num_channels])
             k = tf.reshape(k, [batch_size, height * width, num_channels])
@@ -174,17 +181,13 @@ class ConvAttention(layers.Layer):
             v = tf.reshape(v, [batch_size, height * width, num_channels])
             # print("不進入cls_token！")
 
+        # 執行線性投影
+        q = self.proj_q(q)
+        k = self.proj_k(k)
+        v = self.proj_v(v)
         
         # 注意力機制操作
         attn_output = self.attention(q, v, k)
-        attn_output = self.attn_dropout(attn_output) #（非必要）
-
-        # if self.with_cls_token:
-        #     cls_token, attn_output = tf.split(attn_output, [1, height * width], axis=1)
-        #     cls_token = tf.reshape(cls_token, [batch_size, 1, 1, num_channels])
-        #     attn_output = tf.reshape(attn_output, [batch_size, height, width, num_channels])
-        # else:
-        #     attn_output = tf.reshape(attn_output, [batch_size, height, width, num_channels])
 
         # 線性變換並應用dropout（非必要）
         output = self.proj(attn_output)
@@ -206,8 +209,8 @@ class ConvAttention(layers.Layer):
 
 # 定義 ConvEmbed 層
 class ConvEmbed(layers.Layer):
-    def __init__(self, embed_dim=64, patch_size=7, stride=4, padding="same", norm_layer=None):
-        super().__init__()
+    def __init__(self, embed_dim=64, patch_size=7, stride=4, padding="same", norm_layer=None, name=None):
+        super().__init__(name=name)
         # patch_size = to_2tuple(patch_size)
         self.patch_size = patch_size
         self.embed_dim = embed_dim
@@ -225,15 +228,11 @@ class ConvEmbed(layers.Layer):
         self.norm = layers.LayerNormalization(axis=-1) if norm_layer == "LayerNormalization" else None
 
     def call(self, inputs):
-        # print("inputs:", inputs.shape)
         x = self.proj(inputs) # 投影處理
-        # print("x:", x.shape)
         if self.norm:
             # 在 TensorFlow 中，需要將張量從 [B, H, W, C] 重塑為 [B, H*W, C] 進行層標準化，
             # 但由於 TensorFlow 的 LayerNormalization 直接在最後一維上工作，因此這裡不需要重塑。
             x = self.norm(x)
-        # print("ConvEmbed x:", x.shape)
-        # print("留言密碼測試")
         return x
     
     def get_config(self):
@@ -249,40 +248,42 @@ class ConvEmbed(layers.Layer):
 
 # 定義 ConvTransformerBlock 層
 class ConvTransformerBlock(layers.Layer):
-    def __init__(self, dim, num_heads, kernel_size, strides, padding, qkv_method='dw_bn', ffn_dim_factor=4, dropout_rate=0.1, with_cls_token=True, name=None):
+    def __init__(self, embed_dim, num_heads, kernel_size, strides, padding, qkv_method='dw_bn', Mlp_dim_factor=4, dropout_rate=0.1, with_cls_token=True, name=None):
         super().__init__(name=name)
-        self.dim = dim
+        self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.kernel_size = kernel_size
         self.strides = strides
         self.padding = padding
         self.qkv_method = qkv_method
         self.with_cls_token = with_cls_token
-        self.ffn_dim_factor = ffn_dim_factor  # 控制隱藏層大小的倍數
+        self.Mlp_dim_factor = Mlp_dim_factor  # 控制隱藏層大小的倍數
 
         # 初始化 cls_token
         if with_cls_token:
-            self.cls_token = self.add_weight(shape=(1, 1, 1, dim), initializer='zeros', trainable=True, name='cls_token') # 四維度符合圖像處理
+            self.cls_token = self.add_weight(shape=(1, 1, 1, embed_dim), initializer='zeros', trainable=True, name='cls_token') # 四維度符合圖像處理
 
         # [未加入Dim_in/Dim_out不同]
         self.norm1 = layers.LayerNormalization(epsilon=1e-6)
-        self.attn = ConvAttention(dim, num_heads, kernel_size, strides, padding, qkv_method=qkv_method, with_cls_token=with_cls_token)
+        self.attn = ConvAttention(embed_dim, num_heads, kernel_size, strides, padding, qkv_method=qkv_method, with_cls_token=with_cls_token)
         # self.norm2 = layers.LayerNormalization(epsilon=1e-6)
         
-        #  Mlp 實現
-        self.ffn = keras.Sequential([
-            layers.Dense(dim * self.ffn_dim_factor, activation=tf.nn.gelu),  # 可配置的隱藏層大小
+        # Mlp (Multi-Layered Perceptrons)實現
+        # a.k.a. Feed Forward Neural Networks (FFNNs)
+        self.Mlp = keras.Sequential([
+            layers.Dense(embed_dim * self.Mlp_dim_factor, activation=tf.nn.gelu),  # 可配置的隱藏層大小
             layers.Dropout(dropout_rate),  # 加入Dropout層
-            layers.Dense(dim),
+            layers.Dense(embed_dim),
             layers.Dropout(dropout_rate),  # 加入Dropout層
         ])
-        self.output_conv = layers.Conv2D(dim, kernel_size=1)
+        self.output_conv = layers.Conv2D(embed_dim, kernel_size=1)
         
     def call(self, inputs):
-        batch_size = tf.shape(inputs)[0]
-        height = tf.shape(inputs)[1]
-        width = tf.shape(inputs)[2]
-        num_channels = tf.shape(inputs)[3]
+        batch_size, height, width, num_channels = extract_dimensions(inputs)
+        # batch_size = tf.shape(inputs)[0]
+        # height = tf.shape(inputs)[1]
+        # width = tf.shape(inputs)[2]
+        # num_channels = tf.shape(inputs)[3]
 
         if self.with_cls_token:
             cls_tokens = tf.tile(self.cls_token, [batch_size, 1, 1, 1])
@@ -299,49 +300,79 @@ class ConvTransformerBlock(layers.Layer):
         # [未加入DropPath]
 
         y = self.norm1(x)
-        ffn_output = self.ffn(y)
+        Mlp_output = self.Mlp(y)
         
-        output = x + ffn_output
-
+        output = x + Mlp_output
+        
         if self.with_cls_token:
             cls_tokens, output = tf.split(output, [1, height * width], axis=1)
-
-        output = tf.reshape(output, [batch_size, height, width, num_channels])
-
-        return output
+            output = tf.reshape(output, [batch_size, height, width, num_channels])
+            return output, cls_tokens
+        else:
+            output = tf.reshape(output, [batch_size, height, width, num_channels])
+            return output
 
 # 建立CvT模型
 def create_cvt_model(image_height, image_width, num_channels, proc_dim, num_classes):
-    image_inputs = keras.Input(shape=(image_height, image_width, num_channels))
-    proc_inputs = keras.Input(shape=(proc_dim,))
+    image_inputs = keras.Input(shape=(image_height, image_width, num_channels), name='Image_inputs')
+    proc_inputs = keras.Input(shape=(proc_dim,), name='Proc_inputs')
 
     x = image_inputs
+    _,height, width, _ = extract_dimensions(x)
+    # height = tf.shape(x)[1]
+    # width = tf.shape(x)[2]
 
-    # Stage 1
-    x = ConvEmbed(embed_dim=64, patch_size=7, stride=4, norm_layer=layers.LayerNormalization)(x)
-    x = ConvTransformerBlock(64, num_heads=1, kernel_size=3, strides=1, padding='same', qkv_method=projection_method, with_cls_token=cls_token_switch, name='stage1_transformer')(x)
+    # 使用spec來動態創建多個階段
+    for i, stage_spec in enumerate(spec['stages']):
+        x = ConvEmbed(embed_dim=stage_spec['embed_dim'], 
+                                  patch_size=stage_spec['patch_size'], 
+                                  stride=stage_spec['stride'], 
+                                  norm_layer=layers.LayerNormalization, 
+                                  name=f'stage{i+1}_ConvEmbed')(x)
+        if stage_spec['with_cls_token']:
+            x, cls_tokens = ConvTransformerBlock(embed_dim=stage_spec['embed_dim'], 
+                                                 num_heads=stage_spec['num_heads'],
+                                                 kernel_size=stage_spec['kernel_size'], 
+                                                 strides=stage_spec['strides'], 
+                                                 padding='same', 
+                                                 qkv_method=stage_spec['qkv_method'], 
+                                                 with_cls_token=stage_spec['with_cls_token'], 
+                                                 name=f'stage{i+1}_transformer')(x)
+        else:
+            x = ConvTransformerBlock(embed_dim=stage_spec['embed_dim'], 
+                                    num_heads=stage_spec['num_heads'],
+                                    kernel_size=stage_spec['kernel_size'], 
+                                    strides=stage_spec['strides'], 
+                                    padding='same', 
+                                    qkv_method=stage_spec['qkv_method'], 
+                                    with_cls_token=stage_spec['with_cls_token'], 
+                                    name=f'stage{i+1}_transformer')(x)
 
-    # Stage 2
-    x = ConvEmbed(embed_dim=128, patch_size=3, stride=2, norm_layer=layers.LayerNormalization)(x)
-    x = ConvTransformerBlock(128, num_heads=2, kernel_size=3, strides=1, padding='same', qkv_method=projection_method, with_cls_token=cls_token_switch, name='stage2_transformer')(x)
-
-    # Stage 3
-    x = ConvEmbed(embed_dim=256, patch_size=3, stride=2, norm_layer=layers.LayerNormalization)(x)
-    x = ConvTransformerBlock(256, num_heads=4, kernel_size=3, strides=1, padding='same', qkv_method=projection_method, with_cls_token=cls_token_switch, name='stage3_transformer')(x)
-
-
-    # Global Average Pooling
-    x = layers.GlobalAveragePooling2D()(x)
-
+    # 最後處理cls_tokens如果它們存在
+    if stage_spec['with_cls_token']:
+        print("cls_tokens")
+        x = layers.LayerNormalization(epsilon=1e-6)(cls_tokens)
+        x = tf.squeeze(x, axis=1)
+        
+    else:
+        print("No cls_tokens")
+        _,height, width, num_channels = extract_dimensions(x)
+        # height = tf.shape(x)[1]
+        # width = tf.shape(x)[2]
+        # num_channels = tf.shape(x)[3]
+        x = tf.reshape(x, [-1, height * width, num_channels])
+        x = layers.LayerNormalization(epsilon=1e-6)(x)
+        x = tf.reduce_mean(x, axis=1)
+    
     # 處理製程參數
-    proc_features = layers.Dense(256, activation='relu')(proc_inputs)
-    proc_features = layers.Dense(256, activation='relu')(proc_features)
+    proc_features = layers.Dense(256, activation='relu', name='Proc_Dense_1')(proc_inputs)
+    proc_features = layers.Dense(256, activation='relu', name='Proc_Dense_2')(proc_features)
 
     # 將圖像特徵和製程參數特徵連接起來
     concatenated = layers.concatenate([x, proc_features])
 
     # 輸出層
-    outputs = layers.Dense(num_classes, activation='linear')(concatenated)
+    outputs = layers.Dense(num_classes, activation='linear',name='Final_Dense')(concatenated)
 
     # 創建模型
     model = keras.Model(inputs=[image_inputs, proc_inputs], outputs=outputs)
@@ -470,12 +501,12 @@ def train_and_save_model(freq, labels_dict, proc_dict_scaled, images, valid_dict
               validation_data=([x_val, proc_val], y_val), callbacks=[tensorboard_callback, lr_callback])
 
     # 保存模型權重
-    model.save_weights(f'Weight/Images & Parameters/cvt_model_weights_{freq}.h5')
+    model.save_weights(f'Weight/Images & Parameters/cvt_model_weights_{freq}_{projection_method}_cls{cls_token_switch}.h5')
 
     # 初始化 DataFrame 以存儲記錄
     records = pd.DataFrame(model.history.history)
     records.insert(0, 'epoch', range(1, len(records) + 1))
-    records.to_excel(f'Records/Images & Parameters/cvt_records_{freq}.xlsx', index=False)
+    records.to_excel(f'Records/Images & Parameters/cvt_records_{freq}_{projection_method}_cls{cls_token_switch}.xlsx', index=False)
 
 # 主程序
 for freq in frequencies:
