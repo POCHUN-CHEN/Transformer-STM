@@ -1,39 +1,83 @@
-# Makefile for a Python project
-
 # 設定 Python 命令
 PYTHON=python3
 
+# ANSI 顏色碼
+RED=\033[0;31m
+GREEN=\033[0;32m
+YELLOW=\033[0;33m
+BLUE=\033[0;34m
+NC=\033[0m # 無顏色
+
+# # 自動抓取終端機名稱
+# TERMINAL_NAME=$(shell xdotool getwindowfocus getwindowname)
+
+# # 自動切換全螢幕
+# fullscreen:
+# 	wmctrl -r "$(TERMINAL_NAME)" -b toggle,fullscreen
+
 help:
-	@echo "+------------------------- command manual ----------------------------------+"
-	@echo "|         command         |                   description                   |"
-	@echo "|-------------------------+-------------------------------------------------|"
-	@echo "| help                    | show command manual                             |"
-	@echo "| geometric-transform     | do geometric transform                          |"
-	@echo "| find-contours           | isolate every workpieces in image               |"
-	@echo "| bayesian_convolutional_transformer   | generate glcm feature from the workpiece images |"
-	@echo "| bayesian_convolutional_transformer_special     | view computed tomography via dicom viewer       |"
-	@echo "| test             | train model to predict material property        |"
-	@echo "+---------------------------------------------------------------------------+"
+	@echo "+------------------------- command manual ----------------------------------------------------------+"
+	@echo "|         command                 |                           description                           |"
+	@echo "|---------------------------------+-----------------------------------------------------------------|"
+	@echo "| help                            | show command manual                                             |"
+	@echo "|                                                                                                   |"
+	@echo "|[Prepare]                                                                                          |"
+	@echo "| Data_std                        |                                                                 |"
+	@echo "|                                                                                                   |"
+	@echo "|[Train]                                                                                            |"
+	@echo "| Train_CvT_model                 | $(GREEN)(Recommand)$(NC) Training Cvt modle with images & parameters inputs |"
+	@echo "| Train_CvT_model_images          | Training Cvt modle with only images input                       |"
+	@echo "| Train_FFN_model                 | Training FFN modle with only parameters input                   |"
+	@echo "|                                                                                                   |"
+	@echo "|[Test]                                                                                             |"
+	@echo "| Test_CvT_model                  | Test Cvt modle with images & parameters inputs                  |"
+	@echo "| Test_CvT_model_images           | Test Cvt modle with only images input                           |"
+	@echo "| Test_FFN_model                  | Test FFN modle with only parameters input                       |"
+	@echo "|                                                                                                   |"
+	@echo "|[Tools]                                                                                            |"
+	@echo "| memory                          | Show memory usages of CPU & GPU                                 |"
+	@echo "| heatmap                         | Show grad_cam of model weights                                  |"
+	@echo "| model_plot                      | Plot model's structure                                          |"
+	@echo "+---------------------------------------------------------------------------------------------------+"
 
 # # 安裝依賴
 # install:
 # 	pip install -r requirements.txt
 
-# 執行應用
-bayesian_convolutional_transformer:
-	$(PYTHON) BayConvT.py
+# Train
+Train_CvT_model:
+	$(PYTHON) CvT(Par).py
 
-bayesian_convolutional_transformer_special:
-	$(PYTHON) BayConvT_N.py
+# Train_CvT_model_images:
+# 	$(PYTHON) BayConvT_N.py
 
-test:
-	$(PYTHON) BayConvT_test.py
+Train_FFN_model:
+	$(PYTHON) FFN(OnlyPar).py
+
+# Test
+Test_CvT_model:
+	$(PYTHON) CvT_test(Par).py
+
+# Test_CvT_model_images:
+# 	$(PYTHON) BayConvT_N.py
+
+Test_FFN_model:
+	$(PYTHON) FFN_test(OnlyPar).py
+
+#Tools
+memory:
+	$(PYTHON) memory.py
+
+heatmap:
+	$(PYTHON) grad_cam.py
+
+model_plot:
+	$(PYTHON) model_plot.py
 
 # 清理編譯生成的文件
 clean:
 	find . -type f -name '*.pyc' -delete
 	find . -type d -name '__pycache__' -delete
 
-
 # 偽目標
-.PHONY: bayesian_convolutional_transformer bayesian_convolutional_transformer_special test clean run
+.PHONY: help Train_CvT_model Train_FFN_model Test_CvT_model Test_FFN_model clean

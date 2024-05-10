@@ -477,7 +477,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     plt.title(f'R^2 - {freq}')
     plt.xlabel('Actual Values')
     plt.ylabel('Predicted Values')
-    plt.savefig(f'Plots/Images & Parameters/R^2_{freq}_{projection_method}_cls{cls_token_switch}.png')
+    plt.savefig(f'Plots/Images & Parameters/CvT_R^2_{freq}_{projection_method}_cls{cls_token_switch}.png')
     plt.clf()
 
     # 繪製實際值與預測值的線圖
@@ -488,7 +488,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     plt.ylabel('Values')
     plt.title(f'Actual vs Predicted - {freq}')
     plt.legend()
-    plt.savefig(f'Plots/Images & Parameters/Actual_vs_Predicted_{freq}_{projection_method}_cls{cls_token_switch}.png')
+    plt.savefig(f'Plots/Images & Parameters/CvT_Actual_vs_Predicted_{freq}_{projection_method}_cls{cls_token_switch}.png')
     plt.clf()
 
 # 主程序

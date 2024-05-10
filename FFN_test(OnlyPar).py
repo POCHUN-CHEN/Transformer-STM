@@ -13,10 +13,10 @@ from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 # 提取不同頻率
-# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 # frequencies = ['50HZ_Hc']
 # frequencies = ['50HZ_μa']
-frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
+# frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
 
 # 定義範圍
 group_start = 1
@@ -125,7 +125,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, valid_dict, count
     model = create_cvt_model(proc_dict_scaled.shape[1], num_classes)
 
     # 載入模型權重
-    model.load_weights(f'Weight/Parameters/cvt_model_weights_{freq}.h5')
+    model.load_weights(f'Weight/Parameters/Vit_model_weights_{freq}.h5')
 
     # 進行預測
     predictions = model.predict([proc_val])
@@ -148,7 +148,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, valid_dict, count
     plt.title(f'R^2 - {freq}')
     plt.xlabel('Actual Values')
     plt.ylabel('Predicted Values')
-    plt.savefig(f'Plots/Parameters/R^2_{freq}.png')
+    plt.savefig(f'Plots/Parameters/Vit_R^2_{freq}.png')
     plt.clf()
 
     # 繪製實際值與預測值的線圖
@@ -159,7 +159,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, valid_dict, count
     plt.ylabel('Values')
     plt.title(f'Actual vs Predicted - {freq}')
     plt.legend()
-    plt.savefig(f'Plots/Parameters/Actual_vs_Predicted_{freq}.png')
+    plt.savefig(f'Plots/Parameters/Vit_Actual_vs_Predicted_{freq}.png')
     plt.clf()
 
 # 主程序
