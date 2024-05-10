@@ -21,10 +21,12 @@ if gpus:
 
 # 提取不同頻率
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br']
-frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv']
+# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv']
 # frequencies = ['200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv']
 # frequencies = ['400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv']
 # frequencies = ['800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+
+frequencies = ['800HZ_Hc', '800HZ_Pcv']
 
 # frequencies = ['50HZ_Bm']
 # frequencies = ['50HZ_Hc']
@@ -33,7 +35,7 @@ frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv']
 # frequencies = ['50HZ_Pcv']
 
 # 投影方式 (dw_bn/avg/linear)
-projection_method = 'dw_bn'
+projection_method = 'linear'
 
 # cls_token 是否打開 (True/False)
 cls_token_switch = True
@@ -64,13 +66,14 @@ train_epochs = 1000
 excel_data = pd.read_excel('Circle_test.xlsx')
 excel_process = pd.read_excel('Process_parameters.xlsx')
 
-
 # Spec 定義
+# ConvEmbed {embed_dim，patch_size, stride}
+# ConvTransformerBlock {embed_dim, num_heads, kernel_size, strides, qkv_method, with_cls_token}
 spec = {
     'stages': [
-        {'embed_dim': 64, 'patch_size': 7, 'stride': 4, 'num_heads': 1, 'kernel_size': 3, 'strides': 1, 'qkv_method': 'linear', 'with_cls_token': False},
-        {'embed_dim': 128, 'patch_size': 3, 'stride': 2, 'num_heads': 2, 'kernel_size': 3, 'strides': 1, 'qkv_method': 'linear', 'with_cls_token': False},
-        {'embed_dim': 256, 'patch_size': 3, 'stride': 2, 'num_heads': 4, 'kernel_size': 3, 'strides': 1, 'qkv_method': 'linear', 'with_cls_token': cls_token_switch},
+        {'embed_dim': 64, 'patch_size': 7, 'stride': 4, 'num_heads': 1, 'kernel_size': 3, 'strides': 1, 'qkv_method': projection_method, 'with_cls_token': False},
+        {'embed_dim': 128, 'patch_size': 3, 'stride': 2, 'num_heads': 2, 'kernel_size': 3, 'strides': 1, 'qkv_method': projection_method, 'with_cls_token': False},
+        {'embed_dim': 256, 'patch_size': 3, 'stride': 2, 'num_heads': 4, 'kernel_size': 3, 'strides': 1, 'qkv_method': projection_method, 'with_cls_token': cls_token_switch},
     ]
 }
 
