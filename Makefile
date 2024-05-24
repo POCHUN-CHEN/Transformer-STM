@@ -46,23 +46,23 @@ help:
 
 # Train
 Train_CvT_model:
-	$(PYTHON) CvT(Par).py
+	$(PYTHON) CvT\(Par\).py
 
 # Train_CvT_model_images:
 # 	$(PYTHON) BayConvT_N.py
 
 Train_FFN_model:
-	$(PYTHON) FFN(OnlyPar).py
+	$(PYTHON) FFN\(OnlyPar\).py
 
 # Test
 Test_CvT_model:
-	$(PYTHON) CvT_test(Par).py
+	$(PYTHON) CvT_test\(Par\).py
 
 # Test_CvT_model_images:
 # 	$(PYTHON) BayConvT_N.py
 
 Test_FFN_model:
-	$(PYTHON) FFN_test(OnlyPar).py
+	$(PYTHON) FFN_test\(OnlyPar\).py
 
 #Tools
 memory:

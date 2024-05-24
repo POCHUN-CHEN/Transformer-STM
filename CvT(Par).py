@@ -4,6 +4,7 @@ from tensorflow.keras import layers
 import numpy as np
 import pandas as pd
 import cv2
+import os
 
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.callbacks import TensorBoard
@@ -20,13 +21,13 @@ if gpus:
         print(e)
 
 # 提取不同頻率
-# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br']
+# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv']
 # frequencies = ['200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv']
 # frequencies = ['400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv']
 # frequencies = ['800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 
-frequencies = ['800HZ_Hc', '800HZ_Pcv']
+frequencies = ['800HZ_Pcv']
 
 # frequencies = ['50HZ_Bm']
 # frequencies = ['50HZ_Hc']
@@ -35,7 +36,7 @@ frequencies = ['800HZ_Hc', '800HZ_Pcv']
 # frequencies = ['50HZ_Pcv']
 
 # 投影方式 (dw_bn/avg/linear)
-projection_method = 'linear'
+projection_method = 'dw_bn'
 
 # cls_token 是否打開 (True/False)
 cls_token_switch = True
@@ -366,6 +367,9 @@ def create_cvt_model(image_height, image_width, num_channels, proc_dim, num_clas
         x = tf.reshape(x, [-1, height * width, num_channels])
         x = layers.LayerNormalization(epsilon=1e-6)(x)
         x = tf.reduce_mean(x, axis=1)
+
+        # Global Average Pooling
+        # x = layers.GlobalAveragePooling2D()(x)
     
     # 處理製程參數
     proc_features = layers.Dense(256, activation='relu', name='Proc_Dense_1')(proc_inputs)
@@ -502,6 +506,16 @@ def train_and_save_model(freq, labels_dict, proc_dict_scaled, images, valid_dict
     # 訓練模型
     model.fit([x_train, proc_train], y_train, epochs=train_epochs, batch_size=batch_size,
               validation_data=([x_val, proc_val], y_val), callbacks=[tensorboard_callback, lr_callback])
+
+    # 檢查並建立資料夾
+    weight_folder = 'Weight/Images & Parameters'
+    record_folder = 'Records/Images & Parameters'
+    
+    if not os.path.exists(weight_folder):
+        os.makedirs(weight_folder)
+        
+    if not os.path.exists(record_folder):
+        os.makedirs(record_folder)
 
     # 保存模型權重
     model.save_weights(f'Weight/Images & Parameters/cvt_model_weights_{freq}_{projection_method}_cls{cls_token_switch}.h5')

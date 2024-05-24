@@ -33,15 +33,28 @@ while True:
     # 清除終端機輸出
     os.system('cls' if os.name == 'nt' else 'clear')
 
+    # 獲取CPU使用情況
+    cpu_usage = psutil.cpu_percent()
+
+    # 列印CPU使用情況
+    print("CPU 使用率 (Usage):", cpu_usage, "%")
+
     # 獲取系統記憶體使用情況
     system_memory = psutil.virtual_memory()
 
     # 列印系統記憶體資訊
-    print("系統記憶體使用情況:")
-    print("系統總記憶體 (Total):", round(system_memory.total / (1024 ** 3), 2), "GB")
-    print("系統已使用記憶體 (Used):", round(system_memory.used / (1024 ** 3), 2), "GB")
-    print("系統可用記憶體 (Free):", round(system_memory.available / (1024 ** 3), 2), "GB")
-    print("系統記憶體使用率 (Usage):", system_memory.percent, "%")
+    print("\nMemory 使用情況:")
+    print("Memory (Total):", round(system_memory.total / (1024 ** 3), 2), "GB")
+    print("Memory (Used):", round(system_memory.used / (1024 ** 3), 2), "GB")
+    print("Memory (Free):", round(system_memory.available / (1024 ** 3), 2), "GB")
+    print("Memory 使用率 (Usage):", system_memory.percent, "%")
+
+
+    # 獲取顯卡計算資源使用率
+    gpu_utilization = get_gpu_utilization()
+
+    # 列印顯卡計算資源使用率
+    print("\nGPU 使用率 (Usage):", gpu_utilization, "%")
 
     # 獲取顯卡記憶體使用情況
     gpu_memory = get_gpu_memory()
@@ -52,13 +65,6 @@ while True:
     print("顯卡已使用記憶體 (Used):", round(gpu_memory['used'] / 1024, 2), "GB")
     print("顯卡可用記憶體 (Free):", round(gpu_memory['free'] / 1024, 2), "GB")
     print("顯卡記憶體使用率 (Usage):", round(gpu_memory['used'] / gpu_memory['total']*100, 2), "%")
-
-    # 獲取顯卡計算資源使用率
-    gpu_utilization = get_gpu_utilization()
-
-    # 列印顯卡計算資源使用率
-    print("\n顯卡計算資源使用率:")
-    print("顯卡計算資源使用率 (Usage):", gpu_utilization, "%")
 
     # 暫停一秒
     time.sleep(1)

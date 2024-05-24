@@ -17,13 +17,13 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 # frequencies = ['200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 # frequencies = ['50HZ_Hc']
 # frequencies = ['800HZ_Bm']
-frequencies = ['50HZ_Hc']
+frequencies = ['800HZ_Hc']
 
 # 投影方式 (dw_bn/avg/linear)
-projection_method = 'dw_bn'
+projection_method = 'linear'
 
 # cls_token 是否打開 (True/False)
-cls_token_switch = True
+cls_token_switch = False
 
 # 定義範圍
 group_start = 1
@@ -459,7 +459,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     model = create_cvt_model(image_height, image_width, num_channels, proc_dict_scaled.shape[1], num_classes)
 
     # 載入模型權重
-    model.load_weights(f'Weight/Images & Parameters/cvt_model_weights_{freq}_{projection_method}_cls{cls_token_switch}.h5')
+    model.load_weights(f'Weight/Images & Parameters/cvt_model_weights_{freq}_{time}_{projection_method}_cls{cls_token_switch}.h5')
 
     # 進行預測
     predictions = model.predict([x_val, proc_val])
@@ -482,7 +482,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     plt.title(f'R^2 - {freq}')
     plt.xlabel('Actual Values')
     plt.ylabel('Predicted Values')
-    plt.savefig(f'Plots/Images & Parameters/CvT_R^2_{freq}_{projection_method}_cls{cls_token_switch}.png')
+    plt.savefig(f'Plots/Images & Parameters/CvT_R^2_{freq}_{time}_{projection_method}_cls{cls_token_switch}.png')
     plt.clf()
 
     # 繪製實際值與預測值的線圖
@@ -493,13 +493,16 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     plt.ylabel('Values')
     plt.title(f'Actual vs Predicted - {freq}')
     plt.legend()
-    plt.savefig(f'Plots/Images & Parameters/CvT_Actual_vs_Predicted_{freq}_{projection_method}_cls{cls_token_switch}.png')
+    plt.savefig(f'Plots/Images & Parameters/CvT_Actual_vs_Predicted_{freq}_{time}_{projection_method}_cls{cls_token_switch}.png')
     plt.clf()
 
 # 主程序
 for freq in frequencies:
     print(f"Testing for frequency {freq}")
 
-    labels_dict, proc_dict_scaled, images, valid_dict, count = preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers, image_height, image_width)
+    times =[1, 2, 3, 4, 5, 6, 7, 8]
+    # times =[1, 2, 3, 4]
+    for time in times:
+        labels_dict, proc_dict_scaled, images, valid_dict, count = preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers, image_height, image_width)
 
-    test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dict, count)
+        test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dict, count)

@@ -13,11 +13,9 @@ from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 
 # 提取不同頻率
-# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-# frequencies = ['200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
+frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 # frequencies = ['50HZ_Hc']
-# frequencies = ['800HZ_Bm']
-frequencies = ['50HZ_Hc']
+# frequencies = ['50HZ_μa']
 
 # 投影方式 (dw_bn/avg/linear)
 projection_method = 'dw_bn'
@@ -43,7 +41,6 @@ num_classes = 1  # 回歸任務
 
 # 讀取Excel文件中的標簽數據
 excel_data = pd.read_excel('Circle_test.xlsx')
-excel_process = pd.read_excel('Process_parameters.xlsx')
 
 # Spec 定義
 # ConvEmbed {embed_dim，patch_size, stride}
@@ -295,9 +292,9 @@ class ConvTransformerBlock(layers.Layer):
             return output
 
 # 建立CvT模型
-def create_cvt_model(image_height, image_width, num_channels, proc_dim, num_classes):
+def create_cvt_model(image_height, image_width, num_channels, num_classes):
     image_inputs = keras.Input(shape=(image_height, image_width, num_channels), name='Image_inputs')
-    proc_inputs = keras.Input(shape=(proc_dim,), name='Proc_inputs')
+    # proc_inputs = keras.Input(shape=(proc_dim,), name='Proc_inputs')
 
     x = image_inputs
     _,height, width, _ = extract_dimensions(x)
@@ -332,12 +329,12 @@ def create_cvt_model(image_height, image_width, num_channels, proc_dim, num_clas
 
     # 最後處理cls_tokens如果它們存在
     if stage_spec['with_cls_token']:
-        # print("cls_tokens")
+        print("cls_tokens")
         x = layers.LayerNormalization(epsilon=1e-6)(cls_tokens)
         x = tf.squeeze(x, axis=1)
         
     else:
-        # print("No cls_tokens")
+        print("No cls_tokens")
         _,height, width, num_channels = extract_dimensions(x)
         # height = tf.shape(x)[1]
         # width = tf.shape(x)[2]
@@ -346,25 +343,15 @@ def create_cvt_model(image_height, image_width, num_channels, proc_dim, num_clas
         x = layers.LayerNormalization(epsilon=1e-6)(x)
         x = tf.reduce_mean(x, axis=1)
 
-        # Global Average Pooling
-        # x = layers.GlobalAveragePooling2D()(x)
-    
-    # 處理製程參數
-    proc_features = layers.Dense(256, activation='relu', name='Proc_Dense_1')(proc_inputs)
-    proc_features = layers.Dense(256, activation='relu', name='Proc_Dense_2')(proc_features)
-
-    # 將圖像特徵和製程參數特徵連接起來
-    concatenated = layers.concatenate([x, proc_features])
-
     # 輸出層
-    outputs = layers.Dense(num_classes, activation='linear',name='Final_Dense')(concatenated)
+    outputs = layers.Dense(num_classes, activation='linear',name='Final_Dense')(x)
 
     # 創建模型
-    model = keras.Model(inputs=[image_inputs, proc_inputs], outputs=outputs)
+    model = keras.Model(inputs=[image_inputs], outputs=outputs)
     return model
 
 # 數據預處理函數
-def preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers, image_height, image_width):
+def preprocess_data(excel_data, group_start, group_end, piece_num_start, piece_num_end, image_layers, image_height, image_width):
     # 載入材料數據標簽
     labels_dict = []
     valid_dict = []
@@ -388,28 +375,6 @@ def preprocess_data(excel_data, excel_process, group_start, group_end, piece_num
     valid_indices = [index for index in valid_indices if start_index <= index < end_index]
     valid_dict = np.array(valid_indices)
 
-    # 載入製程參數
-    Process_parameters = ['氧濃度', '雷射掃描速度', '雷射功率', '線間距', '能量密度']
-    proc_dict = []
-    valid_proc_groups = []
-    for index in valid_dict:
-        group_procs = []
-        parameters_group = []
-        group_index = index // (piece_num_end - piece_num_start + 1)
-
-        for para in Process_parameters:
-            parameters = excel_process.loc[group_index, para]
-            parameters_group.append(parameters)
-
-        group_procs.extend([parameters_group] * image_layers)
-        valid_proc_groups.extend(group_procs)
-
-    proc_dict = np.array(valid_proc_groups)
-
-    # 標準化製程參數
-    scaler = StandardScaler()
-    proc_dict_scaled = scaler.fit_transform(proc_dict)
-
     # 處理積層影像
     valid_images = []
     for index in valid_dict:
@@ -429,12 +394,12 @@ def preprocess_data(excel_data, excel_process, group_start, group_end, piece_num
 
     images = np.array(valid_images)
 
-    return labels_dict, proc_dict_scaled, images, valid_dict, count
+    return labels_dict, images, valid_dict, count
 
 # 測試模型並保存結果
-def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dict, count):
+def test_and_save_results(freq, labels_dict, images, valid_dict, count):
     # 定義驗證集
-    x_val, y_val, proc_val = [], [], []
+    x_val, y_val = [], []
 
     first_valid_indices_per_group = []
     for d in range(0, count, 5):
@@ -449,20 +414,18 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
         if valid_dict[i] in first_valid_indices_per_group:
             x_val.extend(images[index:index + image_layers])
             y_val.extend(labels_dict[index:index + image_layers])
-            proc_val.extend(proc_dict_scaled[index:index + image_layers])
 
     x_val = np.array(x_val)
     y_val = np.array(y_val)
-    proc_val = np.array(proc_val)
 
     # 構建模型
-    model = create_cvt_model(image_height, image_width, num_channels, proc_dict_scaled.shape[1], num_classes)
+    model = create_cvt_model(image_height, image_width, num_channels, num_classes)
 
     # 載入模型權重
-    model.load_weights(f'Weight/Images & Parameters/cvt_model_weights_{freq}_{projection_method}_cls{cls_token_switch}.h5')
+    model.load_weights(f'Weight/Images/cvt_model_weights_{freq}_{projection_method}_cls{cls_token_switch}.h5')
 
     # 進行預測
-    predictions = model.predict([x_val, proc_val])
+    predictions = model.predict([x_val])
 
     # 計算評估指標
     r2 = r2_score(y_val, predictions.flatten())
@@ -482,7 +445,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     plt.title(f'R^2 - {freq}')
     plt.xlabel('Actual Values')
     plt.ylabel('Predicted Values')
-    plt.savefig(f'Plots/Images & Parameters/CvT_R^2_{freq}_{projection_method}_cls{cls_token_switch}.png')
+    plt.savefig(f'Plots/Images/CvT_R^2_{freq}_{projection_method}_cls{cls_token_switch}.png')
     plt.clf()
 
     # 繪製實際值與預測值的線圖
@@ -493,13 +456,13 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     plt.ylabel('Values')
     plt.title(f'Actual vs Predicted - {freq}')
     plt.legend()
-    plt.savefig(f'Plots/Images & Parameters/CvT_Actual_vs_Predicted_{freq}_{projection_method}_cls{cls_token_switch}.png')
+    plt.savefig(f'Plots/Images/CvT_Actual_vs_Predicted_{freq}_{projection_method}_cls{cls_token_switch}.png')
     plt.clf()
 
 # 主程序
 for freq in frequencies:
     print(f"Testing for frequency {freq}")
 
-    labels_dict, proc_dict_scaled, images, valid_dict, count = preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers, image_height, image_width)
+    labels_dict, images, valid_dict, count = preprocess_data(excel_data, group_start, group_end, piece_num_start, piece_num_end, image_layers, image_height, image_width)
 
-    test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dict, count)
+    test_and_save_results(freq, labels_dict, images, valid_dict, count)

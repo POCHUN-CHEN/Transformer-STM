@@ -3,7 +3,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import numpy as np
 import pandas as pd
-import cv2
+import os
 
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.callbacks import TensorBoard
@@ -20,14 +20,14 @@ if gpus:
         print(e)
 
 # 提取不同頻率
-frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br']
+frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv']
 # frequencies = ['200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv']
 # frequencies = ['400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv']
 # frequencies = ['800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 
 
-# frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
+frequencies = ['800HZ_Pcv']
 
 # 定義範圍
 group_start = 1
@@ -165,6 +165,16 @@ def train_and_save_model(freq, labels_dict, proc_dict_scaled, valid_dict, count)
     # 訓練模型
     model.fit([proc_train], y_train, epochs=train_epochs, batch_size=batch_size,
               validation_data=([proc_val], y_val), callbacks=[tensorboard_callback, lr_callback])
+
+    # 檢查並建立資料夾
+    weight_folder = 'Weight/Parameters'
+    record_folder = 'Records/Parameters'
+    
+    if not os.path.exists(weight_folder):
+        os.makedirs(weight_folder)
+        
+    if not os.path.exists(record_folder):
+        os.makedirs(record_folder)
 
     # 保存模型權重
     model.save_weights(f'Weight/Parameters/Vit_model_weights_{freq}.h5')
