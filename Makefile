@@ -22,7 +22,7 @@ help:
 	@echo "| help                            | show command manual                                             |"
 	@echo "|                                                                                                   |"
 	@echo "|[Prepare]                                                                                          |"
-	@echo "| Data_std                        |                                                                 |"
+	@echo "| Pick_up_datas                   |Pick up original data out of STD                                 |"
 	@echo "|                                                                                                   |"
 	@echo "|[Train]                                                                                            |"
 	@echo "| Train_CvT_model                 | $(GREEN)(Recommand)$(NC) Training Cvt modle with images & parameters inputs |"
@@ -44,35 +44,39 @@ help:
 # install:
 # 	pip install -r requirements.txt
 
+# Prepare
+Pick_up_datas:
+	$(PYTHON) tools/PickUpData.py
+
 # Train
 Train_CvT_model:
-	$(PYTHON) CvT\(Par\).py
+	$(PYTHON) models/CvT\(Par\).py
 
-# Train_CvT_model_images:
-# 	$(PYTHON) BayConvT_N.py
+Train_CvT_model_images:
+	$(PYTHON) models/CvT\(Img\).py
 
 Train_FFN_model:
-	$(PYTHON) FFN\(OnlyPar\).py
+	$(PYTHON) models/FFN\(OnlyPar\).py
 
 # Test
 Test_CvT_model:
-	$(PYTHON) CvT_test\(Par\).py
+	$(PYTHON) models/CvT_test\(Par\).py
 
-# Test_CvT_model_images:
-# 	$(PYTHON) BayConvT_N.py
+Test_CvT_model_images:
+	$(PYTHON) models/CvT_test\(Img\).py
 
 Test_FFN_model:
-	$(PYTHON) FFN_test\(OnlyPar\).py
+	$(PYTHON) models/FFN_test\(OnlyPar\).py
 
 #Tools
 memory:
-	$(PYTHON) memory.py
+	$(PYTHON) tools/memory.py
 
 heatmap:
-	$(PYTHON) grad_cam.py
+	$(PYTHON) tools/grad_cam.py
 
 model_plot:
-	$(PYTHON) model_plot.py
+	$(PYTHON) tools/model_plot.py
 
 # 清理編譯生成的文件
 clean:
@@ -80,4 +84,4 @@ clean:
 	find . -type d -name '__pycache__' -delete
 
 # 偽目標
-.PHONY: help Train_CvT_model Train_FFN_model Test_CvT_model Test_FFN_model clean
+.PHONY: help Pick_up_datas Train_CvT_model Train_FFN_model Test_CvT_model Test_FFN_model clean

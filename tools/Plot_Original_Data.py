@@ -1,13 +1,12 @@
 import numpy as np
 import pandas as pd
 import cv2
+import os
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler # 標準化製程參數
 
 # 提取不同頻率
 frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-# frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
-# frequencies = ['50HZ_μa']
 
 # 定義範圍
 group_start = 1
@@ -23,11 +22,16 @@ image_height = 128
 image_width = 128
 num_channels = 1
 
-k_fold_splits = 5
+# 獲取當前腳本所在的目錄
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 確定文件的相對路徑
+Circle_test_path = os.path.join(script_dir, '../Excel/Processed_Circle_test.xlsx')
+Process_parameters_path = os.path.join(script_dir, '../Excel/Process_parameters.xlsx')
 
 # 讀取Excel文件中的標簽數據
-excel_data = pd.read_excel('Circle_test.xlsx')
-excel_process = pd.read_excel('Process_parameters.xlsx')
+excel_data = pd.read_excel(Circle_test_path)
+excel_process = pd.read_excel(Process_parameters_path)
 
 
 ################################################################################
@@ -91,7 +95,7 @@ for group in range(group_start, group_end + 1):
     group_images = []
     for image_num in range(piece_num_start, piece_num_end + 1):
         folder_name = f'circle(340x345)/trail{group:01d}_{image_num:02d}'
-        folder_path = f'data/{folder_name}/'
+        folder_path = os.path.join(script_dir, f'../data/{folder_name}/')
 
         image_group = []
         for i in range(image_layers):

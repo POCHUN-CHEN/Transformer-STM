@@ -3,20 +3,24 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import numpy as np
 import pandas as pd
-import cv2
-import matplotlib.pyplot as plt
+import os
 
 from sklearn.preprocessing import StandardScaler
-from tensorflow.keras.regularizers import l2
+# from tensorflow.keras.callbacks import TensorBoard
 
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+# 動態記憶體分配
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
 
 # 提取不同頻率
 frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-# frequencies = ['50HZ_Hc']
-# frequencies = ['50HZ_μa']
-# frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
+
+# frequencies = ['800HZ_Hc']
 
 # 定義範圍
 group_start = 1
@@ -29,10 +33,22 @@ image_layers = 200  # 每顆影像的層數
 
 num_classes = 1  # 回歸任務
 
-# 讀取Excel文件中的標簽數據
-excel_data = pd.read_excel('Circle_test.xlsx')
-excel_process = pd.read_excel('Process_parameters.xlsx')
+# 批次大小
+batch_size = 128
 
+# 設置 epoch 數目
+train_epochs = 1000
+
+# 獲取當前腳本所在的目錄
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 確定文件的相對路徑
+Circle_test_path = os.path.join(script_dir, '../Excel/Processed_Circle_test.xlsx')
+Process_parameters_path = os.path.join(script_dir, '../Excel/Process_parameters.xlsx')
+
+# 讀取Excel文件中的標簽數據
+excel_data = pd.read_excel(Circle_test_path)
+excel_process = pd.read_excel(Process_parameters_path)
 
 
 # 建立CvT模型
@@ -49,6 +65,12 @@ def create_cvt_model(proc_dim, num_classes):
     # 創建模型
     model = keras.Model(inputs=[proc_inputs], outputs=outputs)
     return model
+
+# 定義學習率調整函數
+def lr_scheduler(epoch, lr):
+    if epoch > 0 and epoch % 50 == 0:
+        return lr * 0.8
+    return lr
 
 # 數據預處理函數
 def preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers):
@@ -99,9 +121,10 @@ def preprocess_data(excel_data, excel_process, group_start, group_end, piece_num
 
     return labels_dict, proc_dict_scaled, valid_dict, count
 
-# 測試模型並保存結果
-def test_and_save_results(freq, labels_dict, proc_dict_scaled, valid_dict, count):
-    # 定義驗證集
+# 訓練模型並保存結果
+def train_and_save_model(freq, labels_dict, proc_dict_scaled, valid_dict, count):
+    # 定義訓練集和驗證集
+    y_train, proc_train = [], []
     y_val, proc_val = [], []
 
     first_valid_indices_per_group = []
@@ -117,55 +140,58 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, valid_dict, count
         if valid_dict[i] in first_valid_indices_per_group:
             y_val.extend(labels_dict[index:index + image_layers])
             proc_val.extend(proc_dict_scaled[index:index + image_layers])
+        else:
+            y_train.extend(labels_dict[index:index + image_layers])
+            proc_train.extend(proc_dict_scaled[index:index + image_layers])
+
+    y_train = np.array(y_train)
+    proc_train = np.array(proc_train)
 
     y_val = np.array(y_val)
     proc_val = np.array(proc_val)
 
-    # 構建模型
+    # 創建模型
     model = create_cvt_model(proc_dict_scaled.shape[1], num_classes)
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3),
+                  loss='mean_squared_error',
+                  metrics=['mae'])
 
-    # 載入模型權重
-    model.load_weights(f'Weight/Parameters/Vit_model_weights_{freq}.h5')
+    # 學習率調整
+    lr_callback = keras.callbacks.LearningRateScheduler(lr_scheduler)
 
-    # 進行預測
-    predictions = model.predict([proc_val])
+    # 創建 TensorBoard 回調
+    # tensorboard_callback = TensorBoard(log_dir='logs', histogram_freq=1)
 
-    # 計算評估指標
-    r2 = r2_score(y_val, predictions.flatten())
-    mse = mean_squared_error(y_val, predictions.flatten())
-    mae = mean_absolute_error(y_val, predictions.flatten())
+    # 訓練模型
+    # model.fit([proc_train], y_train, epochs=train_epochs, batch_size=batch_size,
+    #           validation_data=([proc_val], y_val), callbacks=[tensorboard_callback, lr_callback])
+    model.fit([proc_train], y_train, epochs=train_epochs, batch_size=batch_size,
+              validation_data=([proc_val], y_val), callbacks=[lr_callback])
 
-    # 列印結果
-    print(f'Frequency: {freq}')
-    print(f'Predictions: {predictions.flatten()}')
-    print(f'Actual: {y_val}')
-    print(f'R^2: {r2:.3f}')
-    print(f'MSE: {mse:.3f}')
-    print(f'MAE: {mae:.3f}\n')
+    # 檢查並建立資料夾
+    weight_folder = os.path.join(script_dir, '../Result/Weight/Parameters')
+    record_folder = os.path.join(script_dir, '../Result/Records/Parameters')
+    
+    if not os.path.exists(weight_folder):
+        os.makedirs(weight_folder)
+        
+    if not os.path.exists(record_folder):
+        os.makedirs(record_folder)
 
-    # 繪製 R^2 圖
-    plt.scatter(y_val, predictions.flatten())
-    plt.title(f'R^2 - {freq}')
-    plt.xlabel('Actual Values')
-    plt.ylabel('Predicted Values')
-    plt.savefig(f'Plots/Parameters/Vit_R^2_{freq}.png')
-    plt.clf()
+    # 保存模型權重
+    model.save_weights(os.path.join(weight_folder, f'Vit_model_weights_{freq}.h5'))
 
-    # 繪製實際值與預測值的線圖
-    image_numbers = np.arange(1, len(predictions) + 1)
-    plt.plot(image_numbers, y_val, label='Actual', marker='o')
-    plt.plot(image_numbers, predictions.flatten(), label='Predicted', marker='x')
-    plt.xlabel('Image Number')
-    plt.ylabel('Values')
-    plt.title(f'Actual vs Predicted - {freq}')
-    plt.legend()
-    plt.savefig(f'Plots/Parameters/Vit_Actual_vs_Predicted_{freq}.png')
-    plt.clf()
+    # 初始化 DataFrame 以存儲記錄
+    records = pd.DataFrame(model.history.history)
+    records.insert(0, 'epoch', range(1, len(records) + 1))
+    records.to_excel(os.path.join(record_folder, f'Vit_records_{freq}.xlsx'), index=False)
 
 # 主程序
-for freq in frequencies:
-    print(f"Testing for frequency {freq}")
+if __name__ == "__main__":
+    for freq in frequencies:
+        print(f"Training for frequency {freq}")
 
-    labels_dict, proc_dict_scaled, valid_dict, count = preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers)
+        labels_dict, proc_dict_scaled, valid_dict, count = preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers)
 
-    test_and_save_results(freq, labels_dict, proc_dict_scaled, valid_dict, count)
+        train_and_save_model(freq, labels_dict, proc_dict_scaled, valid_dict, count)
+

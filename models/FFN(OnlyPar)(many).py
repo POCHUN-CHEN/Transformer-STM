@@ -6,9 +6,9 @@ import pandas as pd
 import os
 
 from sklearn.preprocessing import StandardScaler
-from tensorflow.keras.callbacks import TensorBoard
-import collections
-from itertools import repeat
+# from tensorflow.keras.callbacks import TensorBoard
+# import collections
+# from itertools import repeat
 
 # 動態記憶體分配
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -21,13 +21,8 @@ if gpus:
 
 # 提取不同頻率
 frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-# frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv']
-# frequencies = ['200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv']
-# frequencies = ['400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv']
-# frequencies = ['800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
 
-
-frequencies = ['800HZ_Pcv']
+# frequencies = ['800HZ_Hc']
 
 # 定義範圍
 group_start = 1
@@ -46,9 +41,16 @@ batch_size = 128
 # 設置 epoch 數目
 train_epochs = 1000
 
+# 獲取當前腳本所在的目錄
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 確定文件的相對路徑
+Circle_test_path = os.path.join(script_dir, '../Excel/Processed_Circle_test.xlsx')
+Process_parameters_path = os.path.join(script_dir, '../Excel/Process_parameters.xlsx')
+
 # 讀取Excel文件中的標簽數據
-excel_data = pd.read_excel('Circle_test.xlsx')
-excel_process = pd.read_excel('Process_parameters.xlsx')
+excel_data = pd.read_excel(Circle_test_path)
+excel_process = pd.read_excel(Process_parameters_path)
 
 
 # 建立CvT模型
@@ -159,16 +161,13 @@ def train_and_save_model(freq, labels_dict, proc_dict_scaled, valid_dict, count)
     # 學習率調整
     lr_callback = keras.callbacks.LearningRateScheduler(lr_scheduler)
 
-    # 創建 TensorBoard 回調
-    tensorboard_callback = TensorBoard(log_dir='logs', histogram_freq=1)
-
     # 訓練模型
     model.fit([proc_train], y_train, epochs=train_epochs, batch_size=batch_size,
-              validation_data=([proc_val], y_val), callbacks=[tensorboard_callback, lr_callback])
+              validation_data=([proc_val], y_val), callbacks=[lr_callback])
 
     # 檢查並建立資料夾
-    weight_folder = 'Weight/Parameters'
-    record_folder = 'Records/Parameters'
+    weight_folder = os.path.join(script_dir, '../Result/Weight/Parameters')
+    record_folder = os.path.join(script_dir, '../Result/Records/Parameters')
     
     if not os.path.exists(weight_folder):
         os.makedirs(weight_folder)
@@ -177,18 +176,20 @@ def train_and_save_model(freq, labels_dict, proc_dict_scaled, valid_dict, count)
         os.makedirs(record_folder)
 
     # 保存模型權重
-    model.save_weights(f'Weight/Parameters/Vit_model_weights_{freq}.h5')
+    model.save_weights(os.path.join(weight_folder, f'Vit_model_weights_{freq}_{time}.h5'))
 
     # 初始化 DataFrame 以存儲記錄
     records = pd.DataFrame(model.history.history)
     records.insert(0, 'epoch', range(1, len(records) + 1))
-    records.to_excel(f'Records/Parameters/Vit_records_{freq}.xlsx', index=False)
+    records.to_excel(os.path.join(record_folder, f'Vit_records_{freq}_{time}.xlsx'), index=False)
 
 # 主程序
-for freq in frequencies:
-    print(f"Training for frequency {freq}")
+if __name__ == "__main__":
+    for freq in frequencies:
+        print(f"Training for frequency {freq}")
 
-    labels_dict, proc_dict_scaled, valid_dict, count = preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers)
-
-    train_and_save_model(freq, labels_dict, proc_dict_scaled, valid_dict, count)
+        times =[1, 2, 3, 4, 5, 6, 7, 8]
+        for time in times:
+            labels_dict, proc_dict_scaled, valid_dict, count = preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers)
+            train_and_save_model(freq, labels_dict, proc_dict_scaled, valid_dict, count)
 

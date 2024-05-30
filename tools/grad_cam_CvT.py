@@ -4,19 +4,20 @@ from tensorflow.keras import layers
 import numpy as np
 import pandas as pd
 import cv2
+import os
 
 from sklearn.preprocessing import StandardScaler
-from tensorflow.keras.callbacks import TensorBoard
-import collections
-from itertools import repeat
+# from tensorflow.keras.callbacks import TensorBoard
+# import collections
+# from itertools import repeat
 
-from tensorflow.keras.preprocessing import image
+# from tensorflow.keras.preprocessing import image
 
 import matplotlib.pyplot as plt
 import keras_tuner as kt
-from PIL import Image
-from tensorflow.keras.regularizers import l1
-from tensorflow.keras.regularizers import l2
+# from PIL import Image
+# from tensorflow.keras.regularizers import l1
+# from tensorflow.keras.regularizers import l2
 from tqdm import tqdm
 
 
@@ -34,7 +35,6 @@ if gpus:
 
 # 提取不同頻率
 # frequencies = ['50HZ_Bm', '50HZ_Hc', '50HZ_μa', '50HZ_Br', '50HZ_Pcv', '200HZ_Bm', '200HZ_Hc', '200HZ_μa', '200HZ_Br', '200HZ_Pcv', '400HZ_Bm', '400HZ_Hc', '400HZ_μa', '400HZ_Br', '400HZ_Pcv', '800HZ_Bm', '800HZ_Hc', '800HZ_μa', '800HZ_Br', '800HZ_Pcv']
-# frequencies = ['50HZ_μa', '200HZ_μa', '400HZ_μa', '800HZ_μa']
 frequencies = ['50HZ_μa']
 
 # 投影方式 (dw_bn/avg/linear)
@@ -69,9 +69,16 @@ num_classes = 1  # 回歸任務
 # # 設置 epoch 數目
 # train_epochs = 1000
 
+# 獲取當前腳本所在的目錄
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 確定文件的相對路徑
+Circle_test_path = os.path.join(script_dir, '../Excel/Processed_Circle_test.xlsx')
+Process_parameters_path = os.path.join(script_dir, '../Excel/Process_parameters.xlsx')
+
 # 讀取Excel文件中的標簽數據
-excel_data = pd.read_excel('Circle_test.xlsx')
-excel_process = pd.read_excel('Process_parameters.xlsx')
+excel_data = pd.read_excel(Circle_test_path)
+excel_process = pd.read_excel(Process_parameters_path)
 
 
 ################################################################################
@@ -206,23 +213,10 @@ class ConvAttention(layers.Layer):
 
         return output
 
-# def _ntuple(n):
-#     def parse(x):
-#         if isinstance(x, collections.abc.Iterable):
-#             return x
-#         return tuple(repeat(x, n))
-#     return parse
-
-# to_2tuple = _ntuple(2)
-# to_3tuple = _ntuple(3)
-# to_4tuple = _ntuple(4)
-# to_ntuple = _ntuple
-
 # 定義 ConvEmbed 層
 class ConvEmbed(layers.Layer):
     def __init__(self, embed_dim=64, patch_size=7, stride=4, padding="same", norm_layer=None):
         super().__init__()
-        # patch_size = to_2tuple(patch_size)
         self.patch_size = patch_size
         self.embed_dim = embed_dim
         self.stride = stride
@@ -235,19 +229,14 @@ class ConvEmbed(layers.Layer):
             strides=stride,
             padding=padding
         )
-        # self.norm = norm_layer(epsilon=1e-6) if norm_layer else layers.LayerNormalization(epsilon=1e-6)
         self.norm = layers.LayerNormalization(axis=-1) if norm_layer == "LayerNormalization" else None
 
     def call(self, inputs):
-        # print("inputs:", inputs.shape)
         x = self.proj(inputs) # 投影處理
-        # print("x:", x.shape)
         if self.norm:
             # 在 TensorFlow 中，需要將張量從 [B, H, W, C] 重塑為 [B, H*W, C] 進行層標準化，
             # 但由於 TensorFlow 的 LayerNormalization 直接在最後一維上工作，因此這裡不需要重塑。
             x = self.norm(x)
-        # print("ConvEmbed x:", x.shape)
-        # print("留言密碼測試")
         return x
     
     def get_config(self):
@@ -281,7 +270,6 @@ class ConvTransformerBlock(layers.Layer):
         # [未加入Dim_in/Dim_out不同]
         self.norm1 = layers.LayerNormalization(epsilon=1e-6)
         self.attn = ConvAttention(dim, num_heads, kernel_size, strides, padding, qkv_method=qkv_method, with_cls_token=with_cls_token)
-        # self.norm2 = layers.LayerNormalization(epsilon=1e-6)
         
         #  Mlp 實現
         self.ffn = keras.Sequential([
@@ -415,7 +403,7 @@ def preprocess_data(excel_data, excel_process, group_start, group_end, piece_num
         image_num = index % (piece_num_end - piece_num_start + 1) + 1
 
         folder_name = f'circle(340x345)/trail{group_index:01d}_{image_num:02d}'
-        folder_path = f'data/{folder_name}/'
+        folder_path = os.path.join(script_dir, f'../data/{folder_name}/')
 
         for i in range(image_layers):
             filename = f'{folder_path}/layer_{i + 1:02d}.jpg'
@@ -435,8 +423,6 @@ def make_gradcam_heatmap(img_array, proc_array, model, last_conv_layer_name, pre
     img_dataset = tf.data.Dataset.from_tensor_slices((img_array, proc_array))
     img_dataset = img_dataset.batch(batch_size)
 
-    # print("img_array :", img_array.shape)
-    # print("proc_array :", proc_array.shape)
     gpu_memory_usage = tf.config.experimental.get_memory_usage("/gpu:0")
     print(f"GPU memory usage 1: {gpu_memory_usage} bytes")
 
@@ -524,7 +510,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     # model.summary()
     
     # 載入模型權重
-    model.load_weights(f'Weight/Images & Parameters/cvt_model_weights_{freq}.h5')
+    model.load_weights(os.path.join(script_dir, f'../Result/Weight/Images & Parameters/cvt_model_weights_{freq}.h5'))
 
     # 將單通道灰度圖像轉換為三通道圖像
     img_np_color = []
@@ -576,7 +562,11 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     # print("Superimposed min value:", np.min(superimposed_img))
     # print("Superimposed max value:", np.max(superimposed_img))
 
-
+    # 檢查並建立資料夾
+    Heatmap_folder = os.path.join(script_dir, '../Result/Plots/Heatmap')
+    
+    if not os.path.exists(Heatmap_folder):
+        os.makedirs(Heatmap_folder)
 
     # 逐個顯示多個圖像
     for image_index in tqdm(range(len(img_np_color)), desc="處理圖像進度"):
@@ -603,7 +593,7 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
 
         # 顯示圖形
         # plt.show()
-        plt.savefig(f'Plots/Heatmap/Heatmap_{image_index+1}.png')
+        plt.savefig(Heatmap_folder, f'Heatmap_{image_index+1}.png')
         plt.clf() # 清理圖形，避免圖形重疊
         plt.close() # 關閉當前圖形，釋放資源
 
@@ -630,11 +620,12 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
 ##################################### 熱力圖 #####################################
 #################################################################################
 # 主程序
-for freq in frequencies:
-    print(f"Testing for frequency {freq}")
+if __name__ == "__main__":
+    for freq in frequencies:
+        print(f"Testing for frequency {freq}")
 
-    labels_dict, proc_dict_scaled, images, valid_dict, count = preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers, image_height, image_width)
+        labels_dict, proc_dict_scaled, images, valid_dict, count = preprocess_data(excel_data, excel_process, group_start, group_end, piece_num_start, piece_num_end, image_layers, image_height, image_width)
 
-    test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dict, count)
+        test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dict, count)
 
         
