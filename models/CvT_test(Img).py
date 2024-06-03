@@ -482,8 +482,8 @@ def test_and_save_results(freq, labels_dict, images, valid_dict, count):
 
     # 繪製實際值與預測值的線圖
     image_numbers = np.arange(1, len(predictions) + 1)
-    plt.plot(image_numbers, y_val, label='Actual', marker='o')
-    plt.plot(image_numbers, predictions.flatten(), label='Predicted', marker='x')
+    plt.plot(image_numbers, predictions.flatten(), color='orange', label='Predicted', alpha=0.8, markersize=3)
+    plt.plot(image_numbers, y_val, color='blue', label='Actual', alpha=0.4, markersize=3)
     plt.xlabel('Image Number')
     plt.ylabel('Values')
     plt.title(f'Actual vs Predicted - {freq}')
