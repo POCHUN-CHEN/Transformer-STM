@@ -102,10 +102,51 @@ def preprocess_data(excel_data, excel_process, group_start, group_end, piece_num
 
     return labels_dict, proc_dict_scaled, valid_dict, count
 
+# 定義一個函數來保存預測結果和評估指標到Excel
+def save_predictions_to_excel(predictions, actual, train_num, test_num, r2, mse, mae, freq):
+    # 確保predictions和actual是平坦的numpy陣列
+    predictions = predictions.flatten()
+    actual = actual.flatten()
+
+    # 計算誤差百分比
+    errors = (abs(predictions - actual) / actual) * 100
+
+    # 建立預測和實際值的DataFrame
+    data = {
+        'Predictions': predictions,
+        'Actual': actual,
+        'Errors(%)': errors
+    }
+    df = pd.DataFrame(data)
+
+    # 建立包含MSE, MAE, R^2的DataFrame
+    metrics_data = {
+        'Train mounts': [train_num],
+        'Test mounts': [test_num],
+        'R2 Score': [r2],
+        'MSE': [mse],
+        'MAE': [mae]
+    }
+    metrics_df = pd.DataFrame(metrics_data)
+
+    # 將預測數據和評估指標數據合併
+    result_df = pd.concat([df, metrics_df], axis=1)
+
+    # 檢查並建立資料夾
+    Excel_folder = os.path.join(script_dir, '../Result/Excel/Parameters')
+    
+    if not os.path.exists(Excel_folder):
+        os.makedirs(Excel_folder)
+
+    # 儲存至Excel
+    excel_path = os.path.join(Excel_folder, f'Predictions_Metrics_{freq}.xlsx')
+    result_df.to_excel(excel_path, index=False)
+
 # 測試模型並保存結果
 def test_and_save_results(freq, labels_dict, proc_dict_scaled, valid_dict, count):
     # 定義驗證集
     y_val, proc_val = [], []
+    train_num = 0
 
     first_valid_indices_per_group = []
     for d in range(0, count, 5):
@@ -120,9 +161,14 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, valid_dict, count
         if valid_dict[i] in first_valid_indices_per_group:
             y_val.extend(labels_dict[index:index + image_layers])
             proc_val.extend(proc_dict_scaled[index:index + image_layers])
+        else:
+            train_num = train_num + 1
 
     y_val = np.array(y_val)
     proc_val = np.array(proc_val)
+
+    train_num = train_num * image_layers
+    test_num = len(y_val)
 
     # 構建模型
     model = create_cvt_model(proc_dict_scaled.shape[1], num_classes)
@@ -143,6 +189,9 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, valid_dict, count
     r2 = r2_score(y_val, predictions.flatten())
     mse = mean_squared_error(y_val, predictions.flatten())
     mae = mean_absolute_error(y_val, predictions.flatten())
+
+    # 保存預測和評估指標到Excel
+    save_predictions_to_excel(predictions, y_val, train_num, test_num, r2, mse, mae, freq)
 
     # 列印結果
     print(f'Frequency: {freq}')

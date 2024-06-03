@@ -3,26 +3,26 @@ import os
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill, Font
 
-def process_data(group):
-    # 計算平均值和標準差
-    mean = group.mean()
-    std = group.std()
-    # 處理超過標準差的數據
-    outliers = (group < (mean - std)) | (group > (mean + std))
-    group[outliers] = None  # 例如，可以將異常值設為None
-    return group
-
 # def process_data(group):
-#     # 計算Q1和Q3
-#     Q1 = group.quantile(0.25)
-#     Q3 = group.quantile(0.75)
-#     # 計算IQR
-#     IQR = Q3 - Q1
-#     # 定義異常值的範圍
-#     outliers = (group < (Q1 - 1.5 * IQR)) | (group > (Q3 + 1.5 * IQR))
-#     # 處理異常值，這裡可以根據需要來決定如何處理
+#     # 計算平均值和標準差
+#     mean = group.mean()
+#     std = group.std()
+#     # 處理超過標準差的數據
+#     outliers = (group < (mean - std)) | (group > (mean + std))
 #     group[outliers] = None  # 例如，可以將異常值設為None
 #     return group
+
+def process_data(group):
+    # 計算Q1和Q3
+    Q1 = group.quantile(0.25)
+    Q3 = group.quantile(0.75)
+    # 計算IQR
+    IQR = Q3 - Q1
+    # 定義異常值的範圍
+    outliers = (group < (Q1 - 1.5 * IQR)) | (group > (Q3 + 1.5 * IQR))
+    # 處理異常值，這裡可以根據需要來決定如何處理
+    group[outliers] = None  # 例如，可以將異常值設為None
+    return group
 
 def apply_styles(workbook, sheet_name):
     # 定義底色和字體樣式
