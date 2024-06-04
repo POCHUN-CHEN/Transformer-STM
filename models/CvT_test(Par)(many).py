@@ -503,13 +503,13 @@ def test_and_save_results(freq, labels_dict, proc_dict_scaled, images, valid_dic
     print(f'Frequency: {freq}')
     print(f'Predictions: {predictions.flatten()}')
     print(f'Actual: {y_val}')
-    print(f'R^2: {r2:.3f}')
+    print(f'R²: {r2:.3f}')
     print(f'MSE: {mse:.3f}')
     print(f'MAE: {mae:.3f}\n')
 
     # 繪製 R^2 圖
     plt.scatter(y_val, predictions.flatten())
-    plt.title(f'R^2 - {freq}')
+    plt.title(f'R² - {freq}')
     plt.xlabel('Actual Values')
     plt.ylabel('Predicted Values')
     plt.savefig(os.path.join(Plots_folder, f'CvT_R^2_{freq}_{time}_{projection_method}_cls{cls_token_switch}.png'))

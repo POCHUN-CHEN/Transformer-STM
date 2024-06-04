@@ -42,10 +42,10 @@ def plot_predictions(file1, file2, freq):
     text_x = xlim[0] + (xlim[1] - xlim[0]) * 0.019  # 計算x軸上的文本位置
     text_y = ylim[1] - (ylim[1] - ylim[0]) * 0.1  # 計算y軸上的文本位置
 
-    plt.text(text_x, ylim[1] - (ylim[1] - ylim[0]) * 0.2, f'LightGBM\nR2: {r22:.2f}\nMSE: {mse2:.2f}\nMAE: {mae2:.2f}',
+    plt.text(text_x, ylim[1] - (ylim[1] - ylim[0]) * 0.2, f'LightGBM\nR²: {r22:.2f}\nMSE: {mse2:.2f}\nMAE: {mae2:.2f}',
          fontsize=9, color='orange',
          bbox=dict(facecolor='white', alpha=0.5, edgecolor='orange', boxstyle='square,pad=0.5'))
-    plt.text(text_x, ylim[1] - (ylim[1] - ylim[0]) * 0.33, f'Cvt\nR2: {r21:.2f}\nMSE: {mse1:.2f}\nMAE: {mae1:.2f}',
+    plt.text(text_x, ylim[1] - (ylim[1] - ylim[0]) * 0.33, f'Cvt\nR²: {r21:.2f}\nMSE: {mse1:.2f}\nMAE: {mae1:.2f}',
          fontsize=9, color='blue',
          bbox=dict(facecolor='white', alpha=0.5, edgecolor='blue', boxstyle='square,pad=0.5'))
 
